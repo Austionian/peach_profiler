@@ -5,7 +5,7 @@ use quote::quote;
 #[cfg(feature = "profile")]
 use syn::parse::{Nothing, Result};
 #[cfg(feature = "profile")]
-use syn::{parse_macro_input, parse_quote, ItemFn, Lit};
+use syn::{ItemFn, Lit, parse_macro_input, parse_quote};
 
 /// Example use of `#[time_main]`
 ///
@@ -110,7 +110,7 @@ fn parse(args: TokenStream2, input: TokenStream2) -> Result<ItemFn> {
 fn expand_main(mut function: ItemFn) -> TokenStream2 {
     let stmts = function.block.stmts;
     function.block = Box::new(parse_quote!({
-        use peach_metrics::{read_cpu_timer, read_os_timer, get_os_time_freq};
+        use peach_profiler::{read_cpu_timer, read_os_timer, get_os_time_freq};
 
         let time_start = read_os_timer();
         let cpu_start = read_cpu_timer();
@@ -155,7 +155,7 @@ fn expand_main(mut function: ItemFn) -> TokenStream2 {
 
     quote!(
         use std::sync::{LazyLock, Mutex};
-        use peach_metrics::read_cpu_timer;
+        use peach_profiler::read_cpu_timer;
         use std::collections::HashMap;
 
         #[derive(Copy, Clone)]
@@ -260,7 +260,7 @@ fn expand_timing(mut function: ItemFn) -> TokenStream2 {
     let name = function.sig.ident.clone().to_string();
     let stmts = function.block.stmts;
     function.block = Box::new(parse_quote!({
-        use peach_metrics::read_cpu_timer;
+        use peach_profiler::read_cpu_timer;
         use peach_pit::time_block;
 
         time_block!(#name);
