@@ -1,16 +1,17 @@
 [package]
 name = "peach_pit"
 edition = "2024"
-version = "0.1.3"
+version = "0.1.4"
 description = "Peach Profiler's core, but peaches don't have cores, they have pits."
 authors.workspace = true
 license.workspace = true
+repository = "https://github.com/Austionian/peach_profiler"
 
 [dependencies]
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "2", features = ["full"] }
-peach_metrics = { version = "0.1.2", path = "../peach_metrics" }
+peach_metrics = { version = "0.1.3", path = "../peach_metrics" }
 
 [lib]
 proc-macro = true

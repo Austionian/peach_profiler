@@ -1,14 +1,16 @@
 [package]
 name = "peach_profiler"
 edition = "2024"
-version = "0.1.3"
+version = "0.1.4"
 authors.workspace = true
 description.workspace = true
 license.workspace = true
+readme = "crates-io.md"
+repository = "https://github.com/Austionian/peach_profiler"
 
 [dependencies]
-peach_metrics = { version = "0.1.2", path = "../peach_metrics" }
-peach_pit = { version = "0.1.3", path = "../peach_pit" }
+peach_metrics = { version = "0.1.3", path = "../peach_metrics" }
+peach_pit = { version = "0.1.4", path = "../peach_pit" }
 
 
 ### FEATURES #################################################################

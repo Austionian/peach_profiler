@@ -76,6 +76,7 @@ fn expand_main(mut function: ItemFn) -> TokenStream2 {
         let total_cpu = cpu_end - cpu_start;
         let total_time = time_end - time_start;
 
+        println!("\n______________________________________________________");
         println!(
             "Total time: {:.4}ms (CPU freq {:.0})",
             total_time as f64 / 1_000.0,
