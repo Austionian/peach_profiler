@@ -7,8 +7,8 @@ description.workspace = true
 license.workspace = true
 
 [dependencies]
-peach_metrics = { version = "0.1", path = "../peach_metrics" }
-peach_pit = { version = "0.1", path = "../peach_pit" }
+peach_metrics = { version = "0.1.1", path = "../peach_metrics" }
+peach_pit = { version = "0.1.1", path = "../peach_pit" }
 
 
 ### FEATURES #################################################################

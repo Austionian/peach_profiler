@@ -10,7 +10,7 @@ license.workspace = true
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "2", features = ["full"] }
-peach_metrics = { version = "0.1", path = "../peach_metrics" }
+peach_metrics = { version = "0.1.1", path = "../peach_metrics" }
 
 [lib]
 proc-macro = true
