@@ -5,55 +5,8 @@ use quote::quote;
 #[cfg(feature = "profile")]
 use syn::parse::{Nothing, Result};
 #[cfg(feature = "profile")]
-use syn::{ItemFn, Lit, parse_macro_input, parse_quote};
+use syn::{parse_macro_input, parse_quote, ItemFn, Lit};
 
-/// Example use of `#[time_main]`
-///
-/// ```
-/// use peach_pit::{time_block, time_function, time_main};
-///
-/// #[time_main]
-/// fn main() {
-///     let ans = {
-///         time_block!("ans block");
-///
-///         fib(6)
-///     };
-///
-///     assert_eq!(ans, 13);
-///
-///     // inside baseball - shows the fib function was timed as a single function
-///     // and was executed 25 times and the block that contained was named with the
-///     // input and executed only once.
-///     unsafe {
-///         assert_eq!(
-///             PROFILER
-///                 .into_iter()
-///                 .find(|&profile| profile.label[0..3] == *"fib".as_bytes())
-///                 .unwrap()
-///                 .hit_count,
-///             25
-///         );
-///         assert_eq!(
-///             PROFILER
-///                 .into_iter()
-///                 .find(|&profile| profile.label[0..9] == *"ans block".as_bytes())
-///                 .unwrap()
-///                 .hit_count,
-///             1
-///         );
-///     }
-///}
-///
-///
-/// #[time_function]
-/// fn fib(x: usize) -> usize {
-///     if x == 0 || x == 1 {
-///         return 1;
-///     }
-///
-///     fib(x - 1) + fib(x - 2)
-/// }
 #[cfg(feature = "profile")]
 #[proc_macro_attribute]
 pub fn time_main(args: TokenStream, input: TokenStream) -> TokenStream {
@@ -260,8 +213,7 @@ fn expand_timing(mut function: ItemFn) -> TokenStream2 {
     let name = function.sig.ident.clone().to_string();
     let stmts = function.block.stmts;
     function.block = Box::new(parse_quote!({
-        use peach_profiler::read_cpu_timer;
-        use peach_pit::time_block;
+        use peach_profiler::{read_cpu_timer, time_block};
 
         time_block!(#name);
 
