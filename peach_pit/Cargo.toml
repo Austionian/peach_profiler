@@ -1,0 +1,24 @@
+[package]
+name = "peach_pit"
+edition = "2024"
+description = "Peach Profiler's core, but peaches don't have cores, they have pits."
+version.workspace = true
+authors.workspace = true
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", features = ["full"] }
+platform_metrics = { path = "../platform_metrics" }
+
+[lib]
+proc-macro = true
+
+### FEATURES #################################################################
+
+[features]
+default = []
+
+# Enables the profiler. Running a program without the profile feature disables 
+# the profiler and will not affect the program's execution.
+profile = []

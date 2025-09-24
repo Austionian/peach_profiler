@@ -1,0 +1,10 @@
+[package]
+name = "platform_metrics"
+edition = "2024"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+
+[dependencies]
+libc = "0.2"
+windows-sys = "0.61.0"

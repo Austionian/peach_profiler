@@ -1,0 +1,18 @@
+[package]
+name = "peach_profiler"
+edition = "2024"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+
+[dependencies]
+platform_metrics = { path = "../platform_metrics" }
+peach_pit = { path = "../peach_pit" }
+
+
+### FEATURES #################################################################
+
+[features]
+# Enables the profiler. Running a program without the profile feature disables 
+# the profiler and will not affect the program's execution.
+profile = ["peach_pit/profile"]
