@@ -1,8 +1,9 @@
 [workspace]
 resolver = "3"
-members = ["peach_pit", "peach_profiler", "platform_metrics"]
+members = ["peach_pit", "peach_profiler", "peach_metrics"]
 
 [workspace.package]
 version = "0.1.0"
 authors = ["Austin Rooks"]
 description = "A performant, low-overhead profiler. Just peachy."
+license = "MIT OR Apache-2.0"

@@ -4,9 +4,10 @@ edition = "2024"
 version.workspace = true
 authors.workspace = true
 description.workspace = true
+license.workspace = true
 
 [dependencies]
-platform_metrics = { path = "../platform_metrics" }
+peach_metrics = { path = "../peach_metrics" }
 peach_pit = { path = "../peach_pit" }
 
 

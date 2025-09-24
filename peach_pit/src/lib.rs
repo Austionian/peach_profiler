@@ -110,7 +110,7 @@ fn parse(args: TokenStream2, input: TokenStream2) -> Result<ItemFn> {
 fn expand_main(mut function: ItemFn) -> TokenStream2 {
     let stmts = function.block.stmts;
     function.block = Box::new(parse_quote!({
-        use platform_metrics::{read_cpu_timer, read_os_timer, get_os_time_freq};
+        use peach_metrics::{read_cpu_timer, read_os_timer, get_os_time_freq};
 
         let time_start = read_os_timer();
         let cpu_start = read_cpu_timer();
@@ -155,7 +155,7 @@ fn expand_main(mut function: ItemFn) -> TokenStream2 {
 
     quote!(
         use std::sync::{LazyLock, Mutex};
-        use platform_metrics::read_cpu_timer;
+        use peach_metrics::read_cpu_timer;
         use std::collections::HashMap;
 
         #[derive(Copy, Clone)]
@@ -260,7 +260,7 @@ fn expand_timing(mut function: ItemFn) -> TokenStream2 {
     let name = function.sig.ident.clone().to_string();
     let stmts = function.block.stmts;
     function.block = Box::new(parse_quote!({
-        use platform_metrics::read_cpu_timer;
+        use peach_metrics::read_cpu_timer;
         use peach_pit::time_block;
 
         time_block!(#name);
@@ -301,18 +301,21 @@ pub fn time_block(input: TokenStream) -> TokenStream {
     .into()
 }
 
+#[doc(hidden)]
 #[cfg(not(feature = "profile"))]
 #[proc_macro_attribute]
 pub fn time_main(_args: TokenStream, input: TokenStream) -> TokenStream {
     input
 }
 
+#[doc(hidden)]
 #[cfg(not(feature = "profile"))]
 #[proc_macro_attribute]
 pub fn time_function(_args: TokenStream, input: TokenStream) -> TokenStream {
     input
 }
 
+#[doc(hidden)]
 #[cfg(not(feature = "profile"))]
 #[proc_macro]
 pub fn time_block(_input: TokenStream) -> TokenStream {

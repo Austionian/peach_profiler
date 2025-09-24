@@ -4,12 +4,13 @@ edition = "2024"
 description = "Peach Profiler's core, but peaches don't have cores, they have pits."
 version.workspace = true
 authors.workspace = true
+license.workspace = true
 
 [dependencies]
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "2", features = ["full"] }
-platform_metrics = { path = "../platform_metrics" }
+peach_metrics = { path = "../peach_metrics" }
 
 [lib]
 proc-macro = true

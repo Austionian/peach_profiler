@@ -1,9 +1,10 @@
 [package]
-name = "platform_metrics"
+name = "peach_metrics"
 edition = "2024"
 version.workspace = true
 authors.workspace = true
 description.workspace = true
+license.workspace = true
 
 [dependencies]
 libc = "0.2"
