@@ -59,3 +59,107 @@ extern crate peach_pit;
 
 pub use peach_metrics::{estimate_cpu_freq, get_os_time_freq, read_cpu_timer, read_os_timer};
 pub use peach_pit::{time_block, time_function, time_main};
+
+#[doc(hidden)]
+#[derive(Clone)]
+pub struct Timer {
+    pub start: u64,
+    pub index: usize,
+    pub parent_anchor: usize,
+    pub old_elapsed_inclusive: u64,
+}
+
+#[doc(hidden)]
+impl Timer {
+    pub unsafe fn new(name: &str, index: usize) -> Self {
+        debug_assert!(GLOBAL_PROFILER_PARENT >= 0);
+        debug_assert!(GLOBAL_PROFILER_PARENT < 4096);
+        debug_assert!(index < 4096);
+
+        let timer = Self {
+            start: read_cpu_timer(),
+            index,
+            parent_anchor: GLOBAL_PROFILER_PARENT,
+            old_elapsed_inclusive: PROFILER[index].elapsed_inclusive,
+        };
+
+        let label = name.as_bytes();
+        let len = label.len().min(PROFILER[index].label.len());
+
+        // SAFETY:  Assumes single threaded runtime! Label is an reserved 16 bytes.
+        // Converting the name to a [u8] slice and then filling the reserved space
+        // shouldn't fail. Updating the GLOBAL_PROFILER_PARENT with an asserted value.
+        unsafe {
+            // write the name to the anchor
+            PROFILER[index].label[..len].copy_from_slice(&label[..len]);
+
+            GLOBAL_PROFILER_PARENT = index;
+        }
+
+        timer
+    }
+}
+
+#[doc(hidden)]
+impl Drop for Timer {
+    fn drop(&mut self) {
+        debug_assert!(self.index < 4096);
+        debug_assert!(self.parent_anchor < 4096);
+
+        let elapsed = read_cpu_timer() - self.start;
+
+        unsafe {
+            // set the global parent back to the popped anchor's parent
+            GLOBAL_PROFILER_PARENT = self.parent_anchor;
+
+            PROFILER[self.parent_anchor].elapsed_exclusive = PROFILER[self.parent_anchor]
+                .elapsed_exclusive
+                .wrapping_sub(elapsed);
+            PROFILER[self.index].elapsed_exclusive =
+                PROFILER[self.index].elapsed_exclusive.wrapping_add(elapsed);
+            PROFILER[self.index].elapsed_inclusive = self.old_elapsed_inclusive + elapsed;
+            PROFILER[self.index].hit_count += 1;
+            //PROFILER[self.anchor].label = self.name.;
+        }
+    }
+}
+
+// Helper function used to hash a timer to reference the anchors
+#[doc(hidden)]
+pub const fn compile_time_hash(s: &str) -> u32 {
+    let bytes = s.as_bytes();
+    let mut hash = 5381u32; // DJB2 hash initial value
+    let mut i = 0;
+    while i < bytes.len() {
+        hash = hash.wrapping_mul(33).wrapping_add(bytes[i] as u32);
+        i += 1;
+    }
+    hash
+}
+
+#[doc(hidden)]
+#[derive(Copy, Clone)]
+pub struct ProfileAnchor {
+    pub elapsed_exclusive: u64, // cycles not including children
+    pub elapsed_inclusive: u64, // cycles including children
+    pub hit_count: u64,
+    pub label: [u8; 16],
+}
+
+#[doc(hidden)]
+impl ProfileAnchor {
+    pub const fn new() -> Self {
+        Self {
+            elapsed_exclusive: 0,
+            elapsed_inclusive: 0,
+            hit_count: 0,
+            label: [0; 16],
+        }
+    }
+}
+
+// initialize the global variables
+#[doc(hidden)]
+pub static mut PROFILER: [ProfileAnchor; 4096] = [ProfileAnchor::new(); 4096];
+#[doc(hidden)]
+pub static mut GLOBAL_PROFILER_PARENT: usize = 0;

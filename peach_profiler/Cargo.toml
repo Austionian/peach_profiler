@@ -21,3 +21,7 @@ default = []
 # Enables the profiler. Running a program without the profile feature disables 
 # the profiler and will not affect the program's execution.
 profile = ["peach_pit/profile"]
+
+# Make sure to create the documentation with the profiler enabled.
+[package.metadata.docs.rs]
+rustc-args = ["--features", "profile"]

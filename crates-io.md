@@ -2,6 +2,8 @@
 
 **Peach Profiler 🍑 is a performant, low-overhead profiler. Just peachy.**
 
+---
+
 ## Peach Profiler in action
 
 ```rust
