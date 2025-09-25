@@ -38,7 +38,7 @@ fn main() {
         // Time a block
         time_block!("ans block");
 
-        fib(6)
+        fib(22)
     };
 
     println!("{answer}");

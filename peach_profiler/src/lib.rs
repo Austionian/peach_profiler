@@ -1,4 +1,4 @@
-//! # Peach Profiler
+//! # Peach Profiler 🍑
 //!
 //! Peach Profiler is a high performance instrumentation based profiler. Made for low-overhead
 //! and ease of use.
@@ -6,54 +6,65 @@
 //! ## Design
 //!
 //! todo!()
-
-/// Example use of `#[time_main]`
-///
-/// ```
-/// use peach_profiler::{time_block, time_function, time_main};
-///
-/// #[time_main]
-/// fn main() {
-///     let ans = {
-///         time_block!("ans block");
-///
-///         fib(6)
-///     };
-///
-///     assert_eq!(ans, 13);
-///
-///     // inside baseball - shows the fib function was timed as a single function
-///     // and was executed 25 times and the block that contained was named with the
-///     // input and executed only once.
-///     unsafe {
-///         assert_eq!(
-///             PROFILER
-///                 .into_iter()
-///                 .find(|&profile| profile.label[0..3] == *"fib".as_bytes())
-///                 .unwrap()
-///                 .hit_count,
-///             25
-///         );
-///         assert_eq!(
-///             PROFILER
-///                 .into_iter()
-///                 .find(|&profile| profile.label[0..9] == *"ans block".as_bytes())
-///                 .unwrap()
-///                 .hit_count,
-///             1
-///         );
-///     }
-///}
-///
-///
-/// #[time_function]
-/// fn fib(x: usize) -> usize {
-///     if x == 0 || x == 1 {
-///         return 1;
-///     }
-///
-///     fib(x - 1) + fib(x - 2)
-/// }
+//!
+//! ## Example
+//!
+//! ```rust
+//! use peach_profiler::{time_block, time_function, time_main};
+//!
+//! #[time_main]
+//! fn main() {
+//!     let ans = {
+//!         time_block!("ans block");
+//!
+//!         fib(22)
+//!     };
+//!
+//!     assert_eq!(ans, 28657);
+//!
+//!     // inside baseball (PROFILER isn't meant to be read directly) - shows the fib
+//!     // function was timed as a single function and was executed 25 times and the
+//!     // block that contained was named with the input and executed only once.
+//!     unsafe {
+//!         assert_eq!(
+//!             PROFILER
+//!                 .into_iter()
+//!                 .find(|&profile| profile.label[0..3] == *"fib".as_bytes())
+//!                 .unwrap()
+//!                 .hit_count,
+//!             57313
+//!         );
+//!         assert_eq!(
+//!             PROFILER
+//!                 .into_iter()
+//!                 .find(|&profile| profile.label[0..9] == *"ans block".as_bytes())
+//!                 .unwrap()
+//!                 .hit_count,
+//!             1
+//!         );
+//!     }
+//!}
+//!
+//!
+//! #[time_function]
+//! fn fib(x: usize) -> usize {
+//!     if x == 0 || x == 1 {
+//!         return 1;
+//!     }
+//!
+//!     fib(x - 1) + fib(x - 2)
+//! }
+//! ```
+//!
+//! Outputs:
+//! ``` console
+//! 28657
+//!
+//! ______________________________________________________
+//! Total time: 1.7120ms (CPU freq 4300627921)
+//!     ans block[1]: 7396, (0.10%, 99.71% w/children)
+//!     fib[57313]: 7334252, (99.61%)
+//! ```
 extern crate peach_metrics;
 extern crate peach_pit;
 
@@ -71,22 +82,26 @@ pub struct Timer {
 
 #[doc(hidden)]
 impl Timer {
-    pub unsafe fn new(name: &str, index: usize) -> Self {
-        debug_assert!(GLOBAL_PROFILER_PARENT >= 0);
-        debug_assert!(GLOBAL_PROFILER_PARENT < 4096);
+    pub fn new(name: &str, index: usize) -> Self {
         debug_assert!(index < 4096);
 
-        let timer = Self {
-            start: read_cpu_timer(),
-            index,
-            parent_anchor: GLOBAL_PROFILER_PARENT,
-            old_elapsed_inclusive: PROFILER[index].elapsed_inclusive,
+        // SAFETY: Assumes single threaded runtime! We've already asserted that the index
+        // is within the PROFILER's range, and those values are already initialized. The
+        // GLOBAL_PROFILER_PARENT is already initialized and is only updated as a different Timer
+        // is dropped.
+        let timer = unsafe {
+            Self {
+                start: read_cpu_timer(),
+                index,
+                parent_anchor: GLOBAL_PROFILER_PARENT,
+                old_elapsed_inclusive: PROFILER[index].elapsed_inclusive,
+            }
         };
 
         let label = name.as_bytes();
-        let len = label.len().min(PROFILER[index].label.len());
+        let len = label.len().min(LABEL_LENGTH);
 
-        // SAFETY:  Assumes single threaded runtime! Label is an reserved 16 bytes.
+        // SAFETY: Assumes single threaded runtime! Label is an reserved 16 bytes.
         // Converting the name to a [u8] slice and then filling the reserved space
         // shouldn't fail. Updating the GLOBAL_PROFILER_PARENT with an asserted value.
         unsafe {
@@ -108,6 +123,8 @@ impl Drop for Timer {
 
         let elapsed = read_cpu_timer() - self.start;
 
+        // SAFETY: Assumes signle threaded runtime! Indexes self.index and self.parent_anchor have
+        // already been asserted to be within the bounds of the PROFILER array.
         unsafe {
             // set the global parent back to the popped anchor's parent
             GLOBAL_PROFILER_PARENT = self.parent_anchor;
@@ -119,7 +136,6 @@ impl Drop for Timer {
                 PROFILER[self.index].elapsed_exclusive.wrapping_add(elapsed);
             PROFILER[self.index].elapsed_inclusive = self.old_elapsed_inclusive + elapsed;
             PROFILER[self.index].hit_count += 1;
-            //PROFILER[self.anchor].label = self.name.;
         }
     }
 }
@@ -138,12 +154,15 @@ pub const fn compile_time_hash(s: &str) -> u32 {
 }
 
 #[doc(hidden)]
+const LABEL_LENGTH: usize = 16;
+
+#[doc(hidden)]
 #[derive(Copy, Clone)]
 pub struct ProfileAnchor {
     pub elapsed_exclusive: u64, // cycles not including children
     pub elapsed_inclusive: u64, // cycles including children
     pub hit_count: u64,
-    pub label: [u8; 16],
+    pub label: [u8; LABEL_LENGTH],
 }
 
 #[doc(hidden)]
@@ -153,8 +172,15 @@ impl ProfileAnchor {
             elapsed_exclusive: 0,
             elapsed_inclusive: 0,
             hit_count: 0,
-            label: [0; 16],
+            label: [0; LABEL_LENGTH],
         }
+    }
+}
+
+#[doc(hidden)]
+impl Default for ProfileAnchor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
