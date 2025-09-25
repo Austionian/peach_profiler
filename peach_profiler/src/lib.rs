@@ -14,13 +14,13 @@
 //!
 //! #[time_main]
 //! fn main() {
-//!     let ans = {
-//!         time_block!("ans block");
+//!     let answer = {
+//!         time_block!("answer_block");
 //!
-//!         fib(22)
+//!         fibonacci(22)
 //!     };
 //!
-//!     assert_eq!(ans, 28657);
+//!     assert_eq!(answer, 28657);
 //!
 //!     // inside baseball (PROFILER isn't meant to be read directly) - shows the fib
 //!     // function was timed as a single function and was executed 25 times and the
@@ -29,7 +29,7 @@
 //!         assert_eq!(
 //!             PROFILER
 //!                 .into_iter()
-//!                 .find(|&profile| profile.label[0..3] == *"fib".as_bytes())
+//!                 .find(|&profile| profile.label[0..9] == *"fibonacci".as_bytes())
 //!                 .unwrap()
 //!                 .hit_count,
 //!             57313
@@ -37,7 +37,7 @@
 //!         assert_eq!(
 //!             PROFILER
 //!                 .into_iter()
-//!                 .find(|&profile| profile.label[0..9] == *"ans block".as_bytes())
+//!                 .find(|&profile| profile.label[0..12] == *"answer_block".as_bytes())
 //!                 .unwrap()
 //!                 .hit_count,
 //!             1
@@ -47,23 +47,23 @@
 //!
 //!
 //! #[time_function]
-//! fn fib(x: usize) -> usize {
+//! fn fibonacci(x: usize) -> usize {
 //!     if x == 0 || x == 1 {
 //!         return 1;
 //!     }
 //!
-//!     fib(x - 1) + fib(x - 2)
+//!     fibonacci(x - 1) + fibonacci(x - 2)
 //! }
 //! ```
 //!
-//! Outputs:
+//! ---------- Outputs ----------
 //! ``` console
 //! 28657
 //!
 //! ______________________________________________________
 //! Total time: 1.7120ms (CPU freq 4300627921)
-//!     ans block[1]: 7396, (0.10%, 99.71% w/children)
-//!     fib[57313]: 7334252, (99.61%)
+//!     answer_block[1]: 7396, (0.10%, 99.71% w/children)
+//!     fibonacci[57313]: 7334252, (99.61%)
 //! ```
 extern crate peach_metrics;
 extern crate peach_pit;
