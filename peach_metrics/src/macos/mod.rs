@@ -1,5 +1,5 @@
-pub fn read_os_timer() -> u64 {
-    todo!()
+pub fn get_os_time_freq() -> u64 {
+    1_000_000
 }
 
 pub fn read_os_timer() -> u64 {
@@ -9,7 +9,7 @@ pub fn read_os_timer() -> u64 {
     };
 
     unsafe {
-        libc::gettimeofday(&mut value, std::ptr::null_mut());
+        libc::gettimeofday(&raw mut value, core::ptr::null_mut());
     }
 
     get_os_time_freq() * value.tv_sec as u64 + value.tv_usec as u64

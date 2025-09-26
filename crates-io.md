@@ -1,6 +1,6 @@
 <!-- Peach Profiler readme rendered on crates.io -->
 
-**Peach Profiler 🍑 is a performant, low-overhead profiler. Just peachy.**
+**Peach Profiler 🍑 is a performant, low-overhead profiler. It's just peachy.**
 
 ---
 

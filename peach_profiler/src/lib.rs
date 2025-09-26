@@ -25,6 +25,7 @@
 //!     // inside baseball (PROFILER isn't meant to be read directly) - shows the fib
 //!     // function was timed as a single function and was executed 25 times and the
 //!     // block that contained was named with the input and executed only once.
+//!     #[cfg(feature = "profile")]
 //!     unsafe {
 //!         assert_eq!(
 //!             PROFILER
@@ -43,6 +44,9 @@
 //!             1
 //!         );
 //!     }
+//!
+//!     #[cfg(not(feature = "profile"))]
+//!     panic!("Profile feature must be enabled.");
 //!}
 //!
 //!
