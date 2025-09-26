@@ -5,7 +5,7 @@
 //!
 //! ## Design
 //!
-//! todo!()
+//! Relies on `rdtsc` to measure clock cycles for compatibility and relative exactness.
 //!
 //! ## Example
 //!

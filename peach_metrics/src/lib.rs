@@ -1,28 +1,13 @@
-#[cfg(target_os = "linux")]
-mod linux;
-#[cfg(target_os = "macos")]
-mod macos;
-#[cfg(target_os = "windows")]
-mod windows;
+mod cpu_timer;
+mod os_timer;
 
-#[cfg(target_arch = "aarch64")]
-mod aarch64;
-#[cfg(target_arch = "x86_64")]
-mod x86_64;
+pub use cpu_timer::read_cpu_timer;
+pub use os_timer::{get_os_time_freq, read_os_timer};
 
-#[cfg(target_os = "linux")]
-pub use linux::{get_os_time_freq, read_os_timer};
-#[cfg(target_os = "macos")]
-pub use macos::{get_os_time_freq, read_os_timer};
-#[cfg(target_os = "windows")]
-pub use windows::{get_os_time_freq, read_os_timer};
-
-#[cfg(target_arch = "x86_64")]
-pub use x86_64::read_cpu_timer;
-#[cfg(target_arch = "aarch64")]
-pub use x86_64::read_cpu_timer;
-
+/// Used to estimate the cpu's clock speed, from it can estimate cpu timings to realworld clock
+/// time, i.e. how many clocks per seconds.
 pub fn estimate_cpu_freq() -> u64 {
+    // Loop for effectively 100ms to guess the cpu's clock frequency.
     let ms_to_wait = 100u64;
 
     let os_freq = get_os_time_freq();

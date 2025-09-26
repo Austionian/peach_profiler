@@ -9,7 +9,7 @@ readme = "../crates-io.md"
 repository = "https://github.com/Austionian/peach_profiler"
 
 [dependencies]
-peach_metrics = { version = "0.1.4", path = "../peach_metrics" }
+peach_metrics = { version = "0.2.0", path = "../peach_metrics" }
 peach_pit = { version = "0.1.6", path = "../peach_pit" }
 
 [lints]

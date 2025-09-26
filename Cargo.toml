@@ -4,7 +4,7 @@ members = ["peach_pit", "peach_profiler", "peach_metrics"]
 
 [workspace.package]
 authors = ["Austin Rooks"]
-description = "A performant, low-overhead profiler. Just peachy."
+description = "A performant, low-overhead instrumentation-based profiler. Just peachy."
 license = "MIT OR Apache-2.0"
 
 [workspace.lints.clippy]
