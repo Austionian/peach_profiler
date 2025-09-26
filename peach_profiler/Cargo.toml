@@ -7,7 +7,12 @@ description.workspace = true
 license.workspace = true
 readme = "../crates-io.md"
 repository = "https://github.com/Austionian/peach_profiler"
-categories = ["profiling", "no-std", "no-std::no-alloc"]
+categories = [
+  "development-tools::profiling",
+  "development-tools",
+  "no-std",
+  "no-std::no-alloc",
+]
 keywords = ["profiler", "no_std"]
 
 [dependencies]
