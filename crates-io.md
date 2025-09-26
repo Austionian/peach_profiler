@@ -1,6 +1,6 @@
 <!-- Peach Profiler readme rendered on crates.io -->
 
-**Peach Profiler 🍑 is a performant, low-overhead profiler. Just peachy.**
+**Peach Profiler 🍑 is a performant, low-overhead profiler. It's just peachy.**
 
 ---
 
@@ -43,3 +43,27 @@ Total time: 1.7490ms (CPU freq 4300860492)
         answer_block[1]: 6665, (0.09%, 99.63% w/children)
         fibonacci[57313]: 7487891, (99.54%)
 ```
+
+## To Use
+
+The Peach Profiler will only add the instrumentation needed to profile and
+output performance metrics if the `profile` feature is enabled.
+
+Either add it with the dependancy in the `Cargo.toml` file, i.e.:
+
+```toml
+[dependencies]
+peach_profiler = { version = "0.1", features = ["profile"]}
+```
+
+to always profile your code.
+
+Or add a feature to your crate in the `Cargo.toml` file, i.e.:
+
+```toml
+[features]
+profile = ["peach_profiler/profile"]
+```
+
+And then instrumentation will only be added when your program is run with the
+feature specified, i.e. `cargo r --features=profile`

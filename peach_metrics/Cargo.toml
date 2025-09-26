@@ -1,11 +1,13 @@
 [package]
 name = "peach_metrics"
 edition = "2024"
-version = "0.1.4"
+version = "0.2.0"
 authors.workspace = true
-description.workspace = true
+description = "Low level CPU and OS timing functions for instrumention-based profiling."
 license.workspace = true
 repository = "https://github.com/Austionian/peach_profiler"
+categories = ["no-std", "no-std::no-alloc"]
+keywords = ["no_std"]
 
 [dependencies]
 libc = "0.2"
