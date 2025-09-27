@@ -1,7 +1,7 @@
 [package]
 name = "peach_profiler"
 edition = "2024"
-version = "0.1.11"
+version = "0.1.12"
 authors.workspace = true
 description.workspace = true
 license.workspace = true
@@ -17,7 +17,7 @@ keywords = ["profiler", "no_std"]
 
 [dependencies]
 peach_metrics = { version = "0.2.0", path = "../peach_metrics" }
-peach_pit = { version = "0.1.6", path = "../peach_pit" }
+peach_pit = { version = "0.1.7", path = "../peach_pit" }
 
 [lints]
 workspace = true
@@ -30,6 +30,10 @@ default = []
 # Enables the profiler. Running a program without the profile feature disables 
 # the profiler and will not affect the program's execution.
 profile = ["peach_pit/profile"]
+
+# Enable debugging profiling instrumentation. Can help surface hash collisions
+# and/or add/sub overflows.
+debug = ["peach_pit/debug"]
 
 # Make sure to create the documentation with the profiler enabled.
 [package.metadata.docs.rs]

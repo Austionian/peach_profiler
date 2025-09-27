@@ -1,13 +1,11 @@
 use proc_macro::TokenStream;
-#[cfg(feature = "profile")]
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-#[cfg(feature = "profile")]
 use syn::parse::{Nothing, Result};
 #[cfg(feature = "profile")]
-use syn::{parse_macro_input, parse_quote, ItemFn, Lit};
+use syn::{parse_macro_input, Lit};
+use syn::{parse_quote, ItemFn};
 
-#[cfg(feature = "profile")]
 #[proc_macro_attribute]
 pub fn time_main(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = TokenStream2::from(args);
@@ -51,7 +49,6 @@ pub fn time_function(args: TokenStream, input: TokenStream) -> TokenStream {
     })
 }
 
-#[cfg(feature = "profile")]
 fn parse(args: TokenStream2, input: TokenStream2) -> Result<ItemFn> {
     let function: ItemFn = syn::parse2(input)?;
     let _: Nothing = syn::parse2::<Nothing>(args)?;
@@ -59,11 +56,12 @@ fn parse(args: TokenStream2, input: TokenStream2) -> Result<ItemFn> {
     Ok(function)
 }
 
-#[cfg(feature = "profile")]
 fn expand_main(mut function: ItemFn) -> TokenStream2 {
     let stmts = function.block.stmts;
     function.block = Box::new(parse_quote!({
-        use peach_profiler::{PROFILER, read_cpu_timer, read_os_timer, get_os_time_freq};
+        use peach_profiler::{read_cpu_timer, read_os_timer, get_os_time_freq};
+        #[cfg(feature = "profile")]
+        use peach_profiler::PROFILER;
 
         let time_start = read_os_timer();
         let cpu_start = read_cpu_timer();
@@ -83,8 +81,10 @@ fn expand_main(mut function: ItemFn) -> TokenStream2 {
             get_os_time_freq() as f64 * total_cpu as f64 / total_time as f64
         );
 
-        let mut i = 0;
+
+        #[cfg(feature = "profile")]
         unsafe {
+            let mut i = 0;
             while(i < PROFILER.len()) {
                 let anchor = PROFILER[i];
                 if anchor.elapsed_inclusive > 0 {
@@ -148,20 +148,13 @@ pub fn time_block(input: TokenStream) -> TokenStream {
         const HASH: u32 = compile_time_hash(LOCATION);
         const ID: usize = (HASH & 0xFFF) as usize; // Mask to 12 bits (0-4095)
 
-        debug_assert!(ID < 4096);
+        assert!(ID < 4096);
 
         let timer = unsafe {
             Timer::new(#block_name, ID)
         };
     )
     .into()
-}
-
-#[doc(hidden)]
-#[cfg(not(feature = "profile"))]
-#[proc_macro_attribute]
-pub fn time_main(_args: TokenStream, input: TokenStream) -> TokenStream {
-    input
 }
 
 #[doc(hidden)]

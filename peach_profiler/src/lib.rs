@@ -1,11 +1,12 @@
 //! # Peach Profiler 🍑
 //!
-//! Peach Profiler is a high performance instrumentation based profiler. Made for low-overhead
-//! and ease of use.
+//! Peach Profiler is a high performance instrumentation-based profiler. Made for low-overhead
+//! profiling when you want it and zero-cost when you don't.
 //!
 //! ## Design
 //!
-//! Relies on `rdtsc` to measure clock cycles for compatibility and relative exactness.
+//! Relies on platform specific assembly instructions to measure clock cycles for compatibility
+//! and relative exactness.
 //!
 //! ## Example
 //!
@@ -76,6 +77,7 @@ pub use peach_metrics::{estimate_cpu_freq, get_os_time_freq, read_cpu_timer, rea
 pub use peach_pit::{time_block, time_function, time_main};
 
 #[doc(hidden)]
+#[cfg(feature = "profile")]
 #[derive(Clone)]
 pub struct Timer {
     pub start: u64,
@@ -85,9 +87,10 @@ pub struct Timer {
 }
 
 #[doc(hidden)]
+#[cfg(feature = "profile")]
 impl Timer {
     pub fn new(name: &str, index: usize) -> Self {
-        debug_assert!(index < 4096);
+        assert!(index < 4096);
 
         // SAFETY: Assumes single threaded runtime! We've already asserted that the index
         // is within the PROFILER's range, and those values are already initialized. The
@@ -120,10 +123,11 @@ impl Timer {
 }
 
 #[doc(hidden)]
+#[cfg(feature = "profile")]
 impl Drop for Timer {
     fn drop(&mut self) {
-        debug_assert!(self.index < 4096);
-        debug_assert!(self.parent_anchor < 4096);
+        assert!(self.index < 4096);
+        assert!(self.parent_anchor < 4096);
 
         let elapsed = read_cpu_timer() - self.start;
 
@@ -146,6 +150,7 @@ impl Drop for Timer {
 
 // Helper function used to hash a timer to reference the anchors
 #[doc(hidden)]
+#[cfg(feature = "profile")]
 pub const fn compile_time_hash(s: &str) -> u32 {
     let bytes = s.as_bytes();
     let mut hash = 5381u32; // DJB2 hash initial value
@@ -158,9 +163,11 @@ pub const fn compile_time_hash(s: &str) -> u32 {
 }
 
 #[doc(hidden)]
+#[cfg(feature = "profile")]
 const LABEL_LENGTH: usize = 16;
 
 #[doc(hidden)]
+#[cfg(feature = "profile")]
 #[derive(Copy, Clone)]
 pub struct ProfileAnchor {
     pub elapsed_exclusive: u64, // cycles not including children
@@ -170,6 +177,7 @@ pub struct ProfileAnchor {
 }
 
 #[doc(hidden)]
+#[cfg(feature = "profile")]
 impl ProfileAnchor {
     pub const fn new() -> Self {
         Self {
@@ -182,6 +190,7 @@ impl ProfileAnchor {
 }
 
 #[doc(hidden)]
+#[cfg(feature = "profile")]
 impl Default for ProfileAnchor {
     fn default() -> Self {
         Self::new()
@@ -190,6 +199,8 @@ impl Default for ProfileAnchor {
 
 // initialize the global variables
 #[doc(hidden)]
+#[cfg(feature = "profile")]
 pub static mut PROFILER: [ProfileAnchor; 4096] = [ProfileAnchor::new(); 4096];
 #[doc(hidden)]
+#[cfg(feature = "profile")]
 pub static mut GLOBAL_PROFILER_PARENT: usize = 0;
