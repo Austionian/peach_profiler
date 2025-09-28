@@ -25,8 +25,10 @@ pub fn read_os_timer() -> u64 {
 #[cfg(target_family = "windows")]
 pub fn get_os_time_freq() -> u64 {
     let mut freq = 0i64;
-    unsafe { windows_sys::Win32::System::Performance::QueryPerformanceFrequency(&mut freq) }
-    freq.QuadPart
+    unsafe {
+        windows_sys::Win32::System::Performance::QueryPerformanceFrequency(&mut freq);
+    }
+    freq as u64
 }
 
 /// Uses Window's wallclock high-resolution counter - QueryPerformanceCounter to get the wallcock
@@ -34,6 +36,8 @@ pub fn get_os_time_freq() -> u64 {
 #[cfg(target_family = "windows")]
 pub fn read_os_timer() -> u64 {
     let mut value = 0i64;
-    unsafe { windows_sys::Win32::System::Performance::QueryPerformanceCounter(&mut value) }
-    value.QuadPart
+    unsafe {
+        windows_sys::Win32::System::Performance::QueryPerformanceCounter(&mut value);
+    }
+    value as u64
 }
