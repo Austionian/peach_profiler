@@ -70,9 +70,17 @@
 //!     answer_block[1]: 7396, (0.10%, 99.71% w/children)
 //!     fibonacci[57313]: 7334252, (99.61%)
 //! ```
+
+// Support using Peach Profiler without the standard library!
+#![cfg_attr(feature = "no_std", no_std)]
+
 extern crate peach_metrics;
 extern crate peach_pit;
 
+// Re-export libc_print macros to support a no_std environment
+#[doc(hidden)]
+#[cfg(feature = "no_std")]
+pub use libc_print::std_name::{print, println};
 pub use peach_metrics::{estimate_cpu_freq, get_os_time_freq, read_cpu_timer, read_os_timer};
 pub use peach_pit::{time_block, time_function, time_main};
 
@@ -204,3 +212,27 @@ pub static mut PROFILER: [ProfileAnchor; 4096] = [ProfileAnchor::new(); 4096];
 #[doc(hidden)]
 #[cfg(feature = "profile")]
 pub static mut GLOBAL_PROFILER_PARENT: usize = 0;
+
+#[cfg(feature = "profile")]
+#[macro_export]
+macro_rules! imports {
+    () => {
+        $crate::base_imports!();
+        use peach_profiler::PROFILER;
+    };
+}
+
+#[cfg(not(feature = "profile"))]
+#[macro_export]
+macro_rules! imports {
+    () => {
+        $crate::base_imports!();
+    };
+}
+
+#[macro_export]
+macro_rules! base_imports {
+    () => {
+        use peach_profiler::{get_os_time_freq, read_cpu_timer, read_os_timer};
+    };
+}

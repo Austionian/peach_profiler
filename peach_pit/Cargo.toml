@@ -18,10 +18,14 @@ proc-macro = true
 [lints]
 workspace = true
 
+# Make sure to create the documentation with the profiler enabled.
+[package.metadata.docs.rs]
+features = ["profile"]
+
 ### FEATURES #################################################################
 
 [features]
-default = []
+default = ["std"]
 
 # Enables the profiler. Running a program without the profile feature disables 
 # the profiler and will not affect the program's execution.
@@ -30,3 +34,7 @@ profile = []
 # Enable debugging profiling instrumentation. Could help notify hash collisions
 # or add/sub overflows.
 debug = []
+
+no_std = []
+
+std = []

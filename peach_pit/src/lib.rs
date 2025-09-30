@@ -1,3 +1,5 @@
+//#![no_std]
+
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
@@ -56,40 +58,30 @@ fn parse(args: TokenStream2, input: TokenStream2) -> Result<ItemFn> {
     Ok(function)
 }
 
-fn expand_main(mut function: ItemFn) -> TokenStream2 {
-    let stmts = function.block.stmts;
-    function.block = Box::new(parse_quote!({
-        use peach_profiler::{read_cpu_timer, read_os_timer, get_os_time_freq};
-        #[cfg(feature = "profile")]
-        use peach_profiler::PROFILER;
-
-        let time_start = read_os_timer();
-        let cpu_start = read_cpu_timer();
-
-        #(#stmts)*
-
-        let cpu_end = read_cpu_timer();
-        let time_end = read_os_timer();
-
-        let total_cpu = cpu_end - cpu_start;
-        let total_time = time_end - time_start;
-
+fn print_baseline() -> TokenStream2 {
+    quote! {
         println!("\n______________________________________________________");
         println!(
             "Total time: {:.4}ms (CPU freq {:.0})",
             total_time as f64 / 1_000.0,
             get_os_time_freq() as f64 * total_cpu as f64 / total_time as f64
         );
+    }
+}
 
+#[cfg(feature = "profile")]
+fn print_profile() -> TokenStream2 {
+    let baseline_print = print_baseline();
+    quote! {
+        #baseline_print;
 
-        #[cfg(feature = "profile")]
         unsafe {
             let mut i = 0;
             while(i < PROFILER.len()) {
                 let anchor = PROFILER[i];
                 if anchor.elapsed_inclusive > 0 {
                     print!("\t{}[{}]: {}, ({:.2}%",
-                        String::from_utf8_lossy(&anchor.label),
+                        core::str::from_utf8(&anchor.label).unwrap_or(&"invalid name"),
                         anchor.hit_count,
                         anchor.elapsed_exclusive,
                        (anchor.elapsed_exclusive as f64 / total_cpu as f64) * 100.0,
@@ -105,6 +97,32 @@ fn expand_main(mut function: ItemFn) -> TokenStream2 {
                 i += 1;
             }
         }
+    }
+}
+
+#[cfg(not(feature = "profile"))]
+fn print_profile() -> TokenStream2 {
+    print_baseline()
+}
+
+fn expand_main(mut function: ItemFn) -> TokenStream2 {
+    let stmts = function.block.stmts;
+    let print = print_profile();
+    function.block = Box::new(parse_quote!({
+        peach_profiler::imports!();
+
+        let time_start = read_os_timer();
+        let cpu_start = read_cpu_timer();
+
+        #(#stmts)*
+
+        let cpu_end = read_cpu_timer();
+        let time_end = read_os_timer();
+
+        let total_cpu = cpu_end - cpu_start;
+        let total_time = time_end - time_start;
+
+        #print;
     }));
 
     quote!(

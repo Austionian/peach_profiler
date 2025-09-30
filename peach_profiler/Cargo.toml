@@ -16,11 +16,16 @@ categories = [
 keywords = ["profiler", "no_std"]
 
 [dependencies]
+libc-print = { version = "0.1.23", optional = true }
 peach_metrics = { version = "0.2.1", path = "../peach_metrics" }
 peach_pit = { version = "0.1.7", path = "../peach_pit" }
 
 [lints]
 workspace = true
+
+# Make sure to create the documentation with the profiler enabled.
+[package.metadata.docs.rs]
+features = ["profile"]
 
 ### FEATURES #################################################################
 
@@ -35,6 +40,5 @@ profile = ["peach_pit/profile"]
 # and/or add/sub overflows.
 debug = ["peach_pit/debug"]
 
-# Make sure to create the documentation with the profiler enabled.
-[package.metadata.docs.rs]
-features = ["profile"]
+# Run the profiler in a a no_std environment by removing this feature!
+no_std = ["libc-print"]
