@@ -25,7 +25,7 @@ features = ["profile"]
 ### FEATURES #################################################################
 
 [features]
-default = ["std"]
+default = []
 
 # Enables the profiler. Running a program without the profile feature disables 
 # the profiler and will not affect the program's execution.
@@ -34,7 +34,5 @@ profile = []
 # Enable debugging profiling instrumentation. Could help notify hash collisions
 # or add/sub overflows.
 debug = []
-
-no_std = []
 
 std = []

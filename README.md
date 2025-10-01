@@ -68,7 +68,8 @@ Total time: 1.7490ms (CPU freq 4300860492)
 
 > [!IMPORTANT]
 > The Peach Profiler will only add instrumentation needed to profile and
-> output performance metrics if the `profile` feature is enabled.
+> output performance metrics if the `profile` feature is enabled. Without it
+> just the `Total time` will be shown.
 
 Either add it with the dependancy in the `Cargo.toml` file, i.e.:
 

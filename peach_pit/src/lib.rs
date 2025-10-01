@@ -1,5 +1,3 @@
-//#![no_std]
-
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
@@ -107,9 +105,10 @@ fn print_profile() -> TokenStream2 {
 
 fn expand_main(mut function: ItemFn) -> TokenStream2 {
     let stmts = function.block.stmts;
+    let imports = imports();
     let print = print_profile();
     function.block = Box::new(parse_quote!({
-        peach_profiler::imports!();
+        #imports;
 
         let time_start = read_os_timer();
         let cpu_start = read_cpu_timer();
@@ -190,4 +189,43 @@ pub fn time_block(_input: TokenStream) -> TokenStream {
         // profiling disabled
     }
     .into()
+}
+
+#[cfg(feature = "profile")]
+fn imports() -> TokenStream2 {
+    let base_imports = base_imports();
+    quote! {
+        #base_imports;
+        use peach_profiler::PROFILER;
+    }
+}
+
+#[cfg(not(feature = "profile"))]
+fn imports() -> TokenStream2 {
+    let base_imports = base_imports();
+    quote! {
+        #base_imports;
+    }
+}
+
+#[cfg(feature = "std")]
+fn no_std_imports() -> TokenStream2 {
+    quote! {
+        // n/a
+    }
+}
+
+#[cfg(not(feature = "std"))]
+fn no_std_imports() -> TokenStream2 {
+    quote! {
+        use peach_profiler::{print, println};
+    }
+}
+
+fn base_imports() -> TokenStream2 {
+    let std_imports = no_std_imports();
+    quote! {
+        use peach_profiler::{get_os_time_freq, read_cpu_timer, read_os_timer};
+        #std_imports;
+    }
 }

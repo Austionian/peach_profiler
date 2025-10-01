@@ -16,9 +16,11 @@ categories = [
 keywords = ["profiler", "no_std"]
 
 [dependencies]
-libc-print = { version = "0.1.23", optional = true }
 peach_metrics = { version = "0.2.1", path = "../peach_metrics" }
 peach_pit = { version = "0.1.7", path = "../peach_pit" }
+
+[target.'cfg(not(features = "std"))'.dependencies]
+libc-print = { version = "0.1.23" }
 
 [lints]
 workspace = true
@@ -30,7 +32,7 @@ features = ["profile"]
 ### FEATURES #################################################################
 
 [features]
-default = []
+default = ["std"]
 
 # Enables the profiler. Running a program without the profile feature disables 
 # the profiler and will not affect the program's execution.
@@ -40,5 +42,5 @@ profile = ["peach_pit/profile"]
 # and/or add/sub overflows.
 debug = ["peach_pit/debug"]
 
-# Run the profiler in a a no_std environment by removing this feature!
-no_std = ["libc-print"]
+# Run the profiler in a std environment.
+std = ["peach_pit/std"]
