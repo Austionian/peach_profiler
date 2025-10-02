@@ -1,7 +1,7 @@
 [package]
 name = "peach_pit"
 edition = "2024"
-version = "0.1.7"
+version = "0.1.8"
 description = "Peach Profiler's core, but peaches don't have cores, they have pits."
 authors.workspace = true
 license.workspace = true
@@ -35,4 +35,5 @@ profile = []
 # or add/sub overflows.
 debug = []
 
+# Enable std library imports.
 std = []

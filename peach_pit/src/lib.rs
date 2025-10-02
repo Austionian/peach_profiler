@@ -75,8 +75,8 @@ fn print_profile() -> TokenStream2 {
 
         unsafe {
             let mut i = 0;
-            while(i < PROFILER.len()) {
-                let anchor = PROFILER[i];
+            while(i < __PROFILER.len()) {
+                let anchor = __PROFILER[i];
                 if anchor.elapsed_inclusive > 0 {
                     print!("\t{}[{}]: {}, ({:.2}%",
                         core::str::from_utf8(&anchor.label).unwrap_or(&"invalid name"),
@@ -159,7 +159,7 @@ fn expand_timing(mut function: ItemFn) -> TokenStream2 {
 pub fn time_block(input: TokenStream) -> TokenStream {
     let block_name: Lit = parse_macro_input!(input as Lit);
     quote!(
-        use peach_profiler::{PROFILER, GLOBAL_PROFILER_PARENT, Timer, compile_time_hash};
+        use peach_profiler::{__PROFILER, __GLOBAL_PROFILER_PARENT, Timer, compile_time_hash};
 
         const LOCATION: &str = concat!(file!(), ":", line!());
         const HASH: u32 = compile_time_hash(LOCATION);
@@ -192,40 +192,39 @@ pub fn time_block(_input: TokenStream) -> TokenStream {
 }
 
 #[cfg(feature = "profile")]
-fn imports() -> TokenStream2 {
-    let base_imports = base_imports();
+fn profiler_imports() -> TokenStream2 {
     quote! {
-        #base_imports;
-        use peach_profiler::PROFILER;
+        use peach_profiler::__PROFILER;
     }
 }
 
 #[cfg(not(feature = "profile"))]
-fn imports() -> TokenStream2 {
-    let base_imports = base_imports();
+fn profiler_imports() -> TokenStream2 {
     quote! {
-        #base_imports;
+        // __PROFILER doesn't exist in this context
     }
 }
 
 #[cfg(feature = "std")]
-fn no_std_imports() -> TokenStream2 {
+fn std_imports() -> TokenStream2 {
     quote! {
-        // n/a
+        // use print and println from std
     }
 }
 
 #[cfg(not(feature = "std"))]
-fn no_std_imports() -> TokenStream2 {
+fn std_imports() -> TokenStream2 {
     quote! {
         use peach_profiler::{print, println};
     }
 }
 
-fn base_imports() -> TokenStream2 {
-    let std_imports = no_std_imports();
+fn imports() -> TokenStream2 {
+    let std_imports = std_imports();
+    let profiler_imports = profiler_imports();
     quote! {
         use peach_profiler::{get_os_time_freq, read_cpu_timer, read_os_timer};
+        #profiler_imports;
         #std_imports;
     }
 }
