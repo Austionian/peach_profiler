@@ -1,3 +1,5 @@
+#![allow(clippy::cast_sign_loss)]
+
 mod cpu_timer;
 mod os_timer;
 
@@ -6,6 +8,7 @@ pub use os_timer::{get_os_time_freq, read_os_timer};
 
 /// Used to estimate the cpu's clock speed, from it can estimate cpu timings to realworld clock
 /// time, i.e. how many clocks per seconds.
+#[must_use]
 pub fn estimate_cpu_freq() -> u64 {
     // Loop for effectively 100ms to guess the cpu's clock frequency.
     let ms_to_wait = 100u64;

@@ -68,13 +68,14 @@ Total time: 1.7490ms (CPU freq 4300860492)
 
 > [!IMPORTANT]
 > The Peach Profiler will only add instrumentation needed to profile and
-> output performance metrics if the `profile` feature is enabled.
+> output performance metrics if the `profile` feature is enabled. Without it
+> just the `Total time` will be shown.
 
 Either add it with the dependancy in the `Cargo.toml` file, i.e.:
 
 ```toml
 [dependencies]
-peach_profiler = { version = "0.1", features = ["profile"]}
+peach_profiler = { version = "0.1", features = ["profile"] }
 ```
 
 to always profile your code.
@@ -88,3 +89,10 @@ profile = ["peach_profiler/profile"]
 
 And then instrumentation will only be added when your program is run with the
 feature specified, i.e. `cargo r --features=profile`
+
+Run in a no_std env by disabling default features:
+
+```toml
+[dependencies]
+peach_profiler = { version = "0.1", default_features = false }
+```

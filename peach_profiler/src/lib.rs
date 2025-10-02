@@ -23,13 +23,13 @@
 //!
 //!     assert_eq!(answer, 28657);
 //!
-//!     // inside baseball (PROFILER isn't meant to be read directly) - shows the fib
+//!     // inside baseball (__PROFILER isn't meant to be read directly) - shows the fib
 //!     // function was timed as a single function and was executed 25 times and the
 //!     // block that contained was named with the input and executed only once.
 //!     #[cfg(feature = "profile")]
 //!     unsafe {
 //!         assert_eq!(
-//!             PROFILER
+//!             __PROFILER
 //!                 .into_iter()
 //!                 .find(|&profile| profile.label[0..9] == *"fibonacci".as_bytes())
 //!                 .unwrap()
@@ -37,7 +37,7 @@
 //!             57313
 //!         );
 //!         assert_eq!(
-//!             PROFILER
+//!             __PROFILER
 //!                 .into_iter()
 //!                 .find(|&profile| profile.label[0..12] == *"answer_block".as_bytes())
 //!                 .unwrap()
@@ -70,9 +70,17 @@
 //!     answer_block[1]: 7396, (0.10%, 99.71% w/children)
 //!     fibonacci[57313]: 7334252, (99.61%)
 //! ```
+
+// Support using Peach Profiler without the standard library!
+#![cfg_attr(not(feature = "std"), no_std)]
+
 extern crate peach_metrics;
 extern crate peach_pit;
 
+// Re-export libc_print macros to support a no_std environment
+#[doc(hidden)]
+#[cfg(not(feature = "std"))]
+pub use libc_print::std_name::{print, println};
 pub use peach_metrics::{estimate_cpu_freq, get_os_time_freq, read_cpu_timer, read_os_timer};
 pub use peach_pit::{time_block, time_function, time_main};
 
@@ -93,15 +101,15 @@ impl Timer {
         assert!(index < 4096);
 
         // SAFETY: Assumes single threaded runtime! We've already asserted that the index
-        // is within the PROFILER's range, and those values are already initialized. The
-        // GLOBAL_PROFILER_PARENT is already initialized and is only updated as a different Timer
+        // is within the __PROFILER's range, and those values are already initialized. The
+        // __GLOBAL_PROFILER_PARENT is already initialized and is only updated as a different Timer
         // is dropped.
         let timer = unsafe {
             Self {
                 start: read_cpu_timer(),
                 index,
-                parent_anchor: GLOBAL_PROFILER_PARENT,
-                old_elapsed_inclusive: PROFILER[index].elapsed_inclusive,
+                parent_anchor: __GLOBAL_PROFILER_PARENT,
+                old_elapsed_inclusive: __PROFILER[index].elapsed_inclusive,
             }
         };
 
@@ -110,12 +118,12 @@ impl Timer {
 
         // SAFETY: Assumes single threaded runtime! Label is an reserved 16 bytes.
         // Converting the name to a [u8] slice and then filling the reserved space
-        // shouldn't fail. Updating the GLOBAL_PROFILER_PARENT with an asserted value.
+        // shouldn't fail. Updating the __GLOBAL_PROFILER_PARENT with an asserted value.
         unsafe {
             // write the name to the anchor
-            PROFILER[index].label[..len].copy_from_slice(&label[..len]);
+            __PROFILER[index].label[..len].copy_from_slice(&label[..len]);
 
-            GLOBAL_PROFILER_PARENT = index;
+            __GLOBAL_PROFILER_PARENT = index;
         }
 
         timer
@@ -132,18 +140,19 @@ impl Drop for Timer {
         let elapsed = read_cpu_timer() - self.start;
 
         // SAFETY: Assumes signle threaded runtime! Indexes self.index and self.parent_anchor have
-        // already been asserted to be within the bounds of the PROFILER array.
+        // already been asserted to be within the bounds of the __PROFILER array.
         unsafe {
             // set the global parent back to the popped anchor's parent
-            GLOBAL_PROFILER_PARENT = self.parent_anchor;
+            __GLOBAL_PROFILER_PARENT = self.parent_anchor;
 
-            PROFILER[self.parent_anchor].elapsed_exclusive = PROFILER[self.parent_anchor]
+            __PROFILER[self.parent_anchor].elapsed_exclusive = __PROFILER[self.parent_anchor]
                 .elapsed_exclusive
                 .wrapping_sub(elapsed);
-            PROFILER[self.index].elapsed_exclusive =
-                PROFILER[self.index].elapsed_exclusive.wrapping_add(elapsed);
-            PROFILER[self.index].elapsed_inclusive = self.old_elapsed_inclusive + elapsed;
-            PROFILER[self.index].hit_count += 1;
+            __PROFILER[self.index].elapsed_exclusive = __PROFILER[self.index]
+                .elapsed_exclusive
+                .wrapping_add(elapsed);
+            __PROFILER[self.index].elapsed_inclusive = self.old_elapsed_inclusive + elapsed;
+            __PROFILER[self.index].hit_count += 1;
         }
     }
 }
@@ -200,7 +209,7 @@ impl Default for ProfileAnchor {
 // initialize the global variables
 #[doc(hidden)]
 #[cfg(feature = "profile")]
-pub static mut PROFILER: [ProfileAnchor; 4096] = [ProfileAnchor::new(); 4096];
+pub static mut __PROFILER: [ProfileAnchor; 4096] = [ProfileAnchor::new(); 4096];
 #[doc(hidden)]
 #[cfg(feature = "profile")]
-pub static mut GLOBAL_PROFILER_PARENT: usize = 0;
+pub static mut __GLOBAL_PROFILER_PARENT: usize = 0;

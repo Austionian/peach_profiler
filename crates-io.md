@@ -67,3 +67,10 @@ profile = ["peach_profiler/profile"]
 
 And then instrumentation will only be added when your program is run with the
 feature specified, i.e. `cargo r --features=profile`
+
+Run in a no_std env by disabling default features:
+
+```toml
+[dependencies]
+peach_profiler = { version = "0.1", default_features = false }
+```
