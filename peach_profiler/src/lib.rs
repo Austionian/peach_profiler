@@ -77,17 +77,36 @@
 extern crate peach_metrics;
 extern crate peach_pit;
 
+#[cfg(all(feature = "std", feature = "debug"))]
+use std::sync::LazyLock;
+
+#[cfg(all(feature = "std", feature = "debug"))]
+use hashbrown::HashMap;
+pub use peach_metrics::{estimate_cpu_freq, get_os_time_freq, read_cpu_timer, read_os_timer};
+pub use peach_pit::{time_block, time_function, time_main};
+
+#[cfg(feature = "profile")]
+const ARRAY_SIZE: usize = 0xFFF;
+
 // Re-export libc_print macros to support a no_std environment
 #[doc(hidden)]
 #[cfg(not(feature = "std"))]
 pub use libc_print::std_name::{print, println};
-pub use peach_metrics::{estimate_cpu_freq, get_os_time_freq, read_cpu_timer, read_os_timer};
-pub use peach_pit::{time_block, time_function, time_main};
+
+// Re-export print macros to support a std environment
+#[doc(hidden)]
+#[cfg(feature = "std")]
+pub use std::{print, println};
+
+// Re-export hashbrown support a no_std environment
+#[doc(hidden)]
+#[cfg(not(feature = "std"))]
+pub use hashbrown::{DefaultHasher, HashMap};
 
 #[doc(hidden)]
 #[cfg(feature = "profile")]
 #[derive(Clone)]
-pub struct Timer {
+pub struct __Timer {
     pub start: u64,
     pub index: usize,
     pub parent_anchor: usize,
@@ -96,13 +115,13 @@ pub struct Timer {
 
 #[doc(hidden)]
 #[cfg(feature = "profile")]
-impl Timer {
+impl __Timer {
     pub fn new(name: &str, index: usize) -> Self {
-        assert!(index < 4096);
+        assert!(index <= ARRAY_SIZE);
 
         // SAFETY: Assumes single threaded runtime! We've already asserted that the index
         // is within the __PROFILER's range, and those values are already initialized. The
-        // __GLOBAL_PROFILER_PARENT is already initialized and is only updated as a different Timer
+        // __GLOBAL_PROFILER_PARENT is already initialized and is only updated as a different __Timer
         // is dropped.
         let timer = unsafe {
             Self {
@@ -132,10 +151,10 @@ impl Timer {
 
 #[doc(hidden)]
 #[cfg(feature = "profile")]
-impl Drop for Timer {
+impl Drop for __Timer {
     fn drop(&mut self) {
-        assert!(self.index < 4096);
-        assert!(self.parent_anchor < 4096);
+        assert!(self.index <= ARRAY_SIZE);
+        assert!(self.parent_anchor <= ARRAY_SIZE);
 
         let elapsed = read_cpu_timer() - self.start;
 
@@ -157,17 +176,21 @@ impl Drop for Timer {
     }
 }
 
-// Helper function used to hash a timer to reference the anchors
+// const djb2 hash function
 #[doc(hidden)]
 #[cfg(feature = "profile")]
-pub const fn compile_time_hash(s: &str) -> u32 {
+pub const fn __peach_profiler_hash(s: &str) -> usize {
     let bytes = s.as_bytes();
-    let mut hash = 5381u32; // DJB2 hash initial value
+    let mut hash = 5381u32;
     let mut i = 0;
     while i < bytes.len() {
         hash = hash.wrapping_mul(33).wrapping_add(bytes[i] as u32);
         i += 1;
     }
+
+    let hash: usize = (hash & 0xFFF) as usize; // Mask to 12 bits (0-4095)
+    assert!(hash <= ARRAY_SIZE);
+
     hash
 }
 
@@ -209,7 +232,11 @@ impl Default for ProfileAnchor {
 // initialize the global variables
 #[doc(hidden)]
 #[cfg(feature = "profile")]
-pub static mut __PROFILER: [ProfileAnchor; 4096] = [ProfileAnchor::new(); 4096];
+pub static mut __PROFILER: [ProfileAnchor; ARRAY_SIZE] = [ProfileAnchor::new(); ARRAY_SIZE];
 #[doc(hidden)]
 #[cfg(feature = "profile")]
 pub static mut __GLOBAL_PROFILER_PARENT: usize = 0;
+
+// this needs to be a hashmap to compare if the key/value already exists, before entering.
+#[cfg(all(feature = "std", feature = "debug"))]
+pub const __DEBUG_PROFILER: LazyLock<HashMap<String, String>> = LazyLock::new(|| HashMap::new());

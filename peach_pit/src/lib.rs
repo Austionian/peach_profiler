@@ -58,11 +58,11 @@ fn parse(args: TokenStream2, input: TokenStream2) -> Result<ItemFn> {
 
 fn print_baseline() -> TokenStream2 {
     quote! {
-        println!("\n______________________________________________________");
-        println!(
+        peach_profiler::println!("\n______________________________________________________");
+        peach_profiler::println!(
             "Total time: {:.4}ms (CPU freq {:.0})",
-            total_time as f64 / 1_000.0,
-            get_os_time_freq() as f64 * total_cpu as f64 / total_time as f64
+            __total_time as f64 / 1_000.0,
+            peach_profiler::get_os_time_freq() as f64 * __total_cpu as f64 / __total_time as f64
         );
     }
 }
@@ -75,21 +75,21 @@ fn print_profile() -> TokenStream2 {
 
         unsafe {
             let mut i = 0;
-            while(i < __PROFILER.len()) {
-                let anchor = __PROFILER[i];
+            while(i < peach_profiler::__PROFILER.len()) {
+                let anchor = peach_profiler::__PROFILER[i];
                 if anchor.elapsed_inclusive > 0 {
-                    print!("\t{}[{}]: {}, ({:.2}%",
+                    peach_profiler::print!("\t{}[{}]: {}, ({:.2}%",
                         core::str::from_utf8(&anchor.label).unwrap_or(&"invalid name"),
                         anchor.hit_count,
                         anchor.elapsed_exclusive,
-                       (anchor.elapsed_exclusive as f64 / total_cpu as f64) * 100.0,
+                       (anchor.elapsed_exclusive as f64 / __total_cpu as f64) * 100.0,
                     );
                     if anchor.elapsed_exclusive != anchor.elapsed_inclusive {
-                        print!(", {:.2}% w/children",
-                            (anchor.elapsed_inclusive as f64 / total_cpu as f64) * 100.0,
+                        peach_profiler::print!(", {:.2}% w/children",
+                            (anchor.elapsed_inclusive as f64 / __total_cpu as f64) * 100.0,
                         );
                     }
-                    print!(")\n");
+                    peach_profiler::print!(")\n");
                 }
 
                 i += 1;
@@ -105,21 +105,18 @@ fn print_profile() -> TokenStream2 {
 
 fn expand_main(mut function: ItemFn) -> TokenStream2 {
     let stmts = function.block.stmts;
-    let imports = imports();
     let print = print_profile();
     function.block = Box::new(parse_quote!({
-        #imports;
-
-        let time_start = read_os_timer();
-        let cpu_start = read_cpu_timer();
+        let __time_start = peach_profiler::read_os_timer();
+        let __cpu_start = peach_profiler::read_cpu_timer();
 
         #(#stmts)*
 
-        let cpu_end = read_cpu_timer();
-        let time_end = read_os_timer();
+        let __cpu_end = peach_profiler::read_cpu_timer();
+        let __time_end = peach_profiler::read_os_timer();
 
-        let total_cpu = cpu_end - cpu_start;
-        let total_time = time_end - time_start;
+        let __total_cpu = __cpu_end - __cpu_start;
+        let __total_time = __time_end - __time_start;
 
         #print;
     }));
@@ -134,14 +131,27 @@ fn expand_timing(mut function: ItemFn) -> TokenStream2 {
     let name = function.sig.ident.clone().to_string();
     let stmts = function.block.stmts;
     function.block = Box::new(parse_quote!({
-        use peach_profiler::{read_cpu_timer, time_block};
-
-        time_block!(#name);
+        peach_profiler::time_block!(#name);
 
         #(#stmts)*
     }));
 
     quote!(#function)
+}
+
+#[cfg(all(feature = "std", feature = "debug"))]
+fn debug_tokens() -> TokenStream2 {
+    quote! {
+        use peach_profiler::__DEBUG_PROFILER;
+
+    }
+}
+
+#[cfg(not(feature = "debug"))]
+fn debug_tokens() -> TokenStream2 {
+    quote! {
+        // todo
+    }
 }
 
 /// Macro to instrumentally time a block of code.
@@ -159,16 +169,11 @@ fn expand_timing(mut function: ItemFn) -> TokenStream2 {
 pub fn time_block(input: TokenStream) -> TokenStream {
     let block_name: Lit = parse_macro_input!(input as Lit);
     quote!(
-        use peach_profiler::{__PROFILER, __GLOBAL_PROFILER_PARENT, Timer, compile_time_hash};
+        const __LOCATION: &str = concat!(file!(), ":", line!());
+        const __HASH: usize = peach_profiler::__peach_profiler_hash(__LOCATION);
 
-        const LOCATION: &str = concat!(file!(), ":", line!());
-        const HASH: u32 = compile_time_hash(LOCATION);
-        const ID: usize = (HASH & 0xFFF) as usize; // Mask to 12 bits (0-4095)
-
-        assert!(ID < 4096);
-
-        let timer = unsafe {
-            Timer::new(#block_name, ID)
+        let __peach_timer = unsafe {
+            peach_profiler::__Timer::new(#block_name, __HASH)
         };
     )
     .into()
@@ -189,42 +194,4 @@ pub fn time_block(_input: TokenStream) -> TokenStream {
         // profiling disabled
     }
     .into()
-}
-
-#[cfg(feature = "profile")]
-fn profiler_imports() -> TokenStream2 {
-    quote! {
-        use peach_profiler::__PROFILER;
-    }
-}
-
-#[cfg(not(feature = "profile"))]
-fn profiler_imports() -> TokenStream2 {
-    quote! {
-        // __PROFILER doesn't exist in this context
-    }
-}
-
-#[cfg(feature = "std")]
-fn std_imports() -> TokenStream2 {
-    quote! {
-        // use print and println from std
-    }
-}
-
-#[cfg(not(feature = "std"))]
-fn std_imports() -> TokenStream2 {
-    quote! {
-        use peach_profiler::{print, println};
-    }
-}
-
-fn imports() -> TokenStream2 {
-    let std_imports = std_imports();
-    let profiler_imports = profiler_imports();
-    quote! {
-        use peach_profiler::{get_os_time_freq, read_cpu_timer, read_os_timer};
-        #profiler_imports;
-        #std_imports;
-    }
 }
