@@ -134,9 +134,7 @@ fn expand_timing(mut function: ItemFn) -> TokenStream2 {
     let name = function.sig.ident.clone().to_string();
     let stmts = function.block.stmts;
     function.block = Box::new(parse_quote!({
-        use peach_profiler::{read_cpu_timer, time_block};
-
-        time_block!(#name);
+        peach_profiler::time_block!(#name);
 
         #(#stmts)*
     }));
