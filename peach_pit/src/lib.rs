@@ -139,21 +139,6 @@ fn expand_timing(mut function: ItemFn) -> TokenStream2 {
     quote!(#function)
 }
 
-#[cfg(all(feature = "std", feature = "debug"))]
-fn debug_tokens() -> TokenStream2 {
-    quote! {
-        use peach_profiler::__DEBUG_PROFILER;
-
-    }
-}
-
-#[cfg(not(feature = "debug"))]
-fn debug_tokens() -> TokenStream2 {
-    quote! {
-        // todo
-    }
-}
-
 /// Macro to instrumentally time a block of code.
 /// Requires that main is marked with `#[time_main]`
 ///
@@ -169,6 +154,7 @@ fn debug_tokens() -> TokenStream2 {
 pub fn time_block(input: TokenStream) -> TokenStream {
     let block_name: Lit = parse_macro_input!(input as Lit);
     quote!(
+        // compute the hash here rather than in __Timer::new so that they can be const.
         const __LOCATION: &str = concat!(file!(), ":", line!());
         const __HASH: usize = peach_profiler::__peach_profiler_hash(__LOCATION);
 

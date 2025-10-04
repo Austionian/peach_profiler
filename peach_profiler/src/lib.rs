@@ -29,7 +29,7 @@
 //!     #[cfg(feature = "profile")]
 //!     unsafe {
 //!         assert_eq!(
-//!             __PROFILER
+//!             peach_profiler::__PROFILER
 //!                 .into_iter()
 //!                 .find(|&profile| profile.label[0..9] == *"fibonacci".as_bytes())
 //!                 .unwrap()
@@ -37,7 +37,7 @@
 //!             57313
 //!         );
 //!         assert_eq!(
-//!             __PROFILER
+//!             peach_profiler::__PROFILER
 //!                 .into_iter()
 //!                 .find(|&profile| profile.label[0..12] == *"answer_block".as_bytes())
 //!                 .unwrap()
@@ -77,11 +77,6 @@
 extern crate peach_metrics;
 extern crate peach_pit;
 
-#[cfg(all(feature = "std", feature = "debug"))]
-use std::sync::LazyLock;
-
-#[cfg(all(feature = "std", feature = "debug"))]
-use hashbrown::HashMap;
 pub use peach_metrics::{estimate_cpu_freq, get_os_time_freq, read_cpu_timer, read_os_timer};
 pub use peach_pit::{time_block, time_function, time_main};
 
@@ -97,11 +92,6 @@ pub use libc_print::std_name::{print, println};
 #[doc(hidden)]
 #[cfg(feature = "std")]
 pub use std::{print, println};
-
-// Re-export hashbrown support a no_std environment
-#[doc(hidden)]
-#[cfg(not(feature = "std"))]
-pub use hashbrown::{DefaultHasher, HashMap};
 
 #[doc(hidden)]
 #[cfg(feature = "profile")]
@@ -143,6 +133,24 @@ impl __Timer {
             __PROFILER[index].label[..len].copy_from_slice(&label[..len]);
 
             __GLOBAL_PROFILER_PARENT = index;
+        }
+
+        #[cfg(feature = "debug")]
+        // Checks for a collision after the fact so that the label only needs to be copied
+        // from &[u8] -> [u8; 16] once.
+        //
+        // SAFETY: Assumes single threaded runtime! Label is an reserved 16 bytes.
+        // index has already been asserted to fit within the array of __DEBUG_PROFILER.
+        unsafe {
+            let label_value = u128::from_le_bytes(__PROFILER[index].label);
+            if __DEBUG_PROFILER[index] != 0 && __DEBUG_PROFILER[index] != label_value {
+                panic!(
+                    "Hash collisions found! {} and {} both hashed to {index}",
+                    core::str::from_utf8(&__PROFILER[index].label).unwrap_or(&"invalid name"),
+                    core::str::from_utf8(&label).unwrap_or(&"invalid name"),
+                );
+            }
+            __DEBUG_PROFILER[index] = label_value;
         }
 
         timer
@@ -237,6 +245,7 @@ pub static mut __PROFILER: [ProfileAnchor; ARRAY_SIZE] = [ProfileAnchor::new(); 
 #[cfg(feature = "profile")]
 pub static mut __GLOBAL_PROFILER_PARENT: usize = 0;
 
-// this needs to be a hashmap to compare if the key/value already exists, before entering.
-#[cfg(all(feature = "std", feature = "debug"))]
-pub const __DEBUG_PROFILER: LazyLock<HashMap<String, String>> = LazyLock::new(|| HashMap::new());
+#[doc(hidden)]
+#[cfg(all(feature = "profile", feature = "debug"))]
+// stores the name of the function/block at the hashed index to check for collisions.
+pub static mut __DEBUG_PROFILER: [u128; ARRAY_SIZE] = [0; ARRAY_SIZE];

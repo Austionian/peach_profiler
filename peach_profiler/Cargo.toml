@@ -21,7 +21,6 @@ peach_pit = { version = "0.1.8", path = "../peach_pit" }
 
 [target.'cfg(not(features = "std"))'.dependencies]
 libc-print = { version = "0.1.23" }
-hashbrown = "0.16.0"
 
 [lints]
 workspace = true
