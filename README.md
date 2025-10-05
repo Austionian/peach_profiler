@@ -102,5 +102,5 @@ peach_profiler = { version = "0.1", default_features = false }
 ### Debugging
 
 If you are missing a timed function or block from the output there could be the potential for hash
-collisions that aren't checked for in the default execution. Running Peach Profiler with the debug
+collisions that aren't checked for in the default execution. Running Peach Profiler with the `debug`
 feature will panic with collision information if one is found.
