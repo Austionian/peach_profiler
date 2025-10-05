@@ -66,6 +66,8 @@ Total time: 1.7490ms (CPU freq 4300860492)
         fibonacci[57313]: 7487891, (99.54%)
 ```
 
+## To Use
+
 > [!IMPORTANT]
 > The Peach Profiler will only add instrumentation needed to profile and
 > output performance metrics if the `profile` feature is enabled. Without it
@@ -96,3 +98,9 @@ Run in a no_std env by disabling default features:
 [dependencies]
 peach_profiler = { version = "0.1", default_features = false }
 ```
+
+### Debugging
+
+If you are missing a timed function or block from the output there could be the potential for hash
+collisions that aren't checked for in the default execution. Running Peach Profiler with the debug
+feature will panic with collision information if one is found.

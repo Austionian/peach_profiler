@@ -23,13 +23,13 @@
 //!
 //!     assert_eq!(answer, 28657);
 //!
-//!     // inside baseball (__PROFILER isn't meant to be read directly) - shows the fib
+//!     // Inside baseball: (__ANCHORS isn't meant to be read directly) - shows the fibonacci
 //!     // function was timed as a single function and was executed 25 times and the
-//!     // block that contained was named with the input and executed only once.
+//!     // block that contained it was named with the input and executed only once.
 //!     #[cfg(feature = "profile")]
 //!     unsafe {
 //!         assert_eq!(
-//!             __PROFILER
+//!             peach_profiler::__ANCHORS
 //!                 .into_iter()
 //!                 .find(|&profile| profile.label[0..9] == *"fibonacci".as_bytes())
 //!                 .unwrap()
@@ -37,7 +37,7 @@
 //!             57313
 //!         );
 //!         assert_eq!(
-//!             __PROFILER
+//!             peach_profiler::__ANCHORS
 //!                 .into_iter()
 //!                 .find(|&profile| profile.label[0..12] == *"answer_block".as_bytes())
 //!                 .unwrap()
@@ -77,39 +77,48 @@
 extern crate peach_metrics;
 extern crate peach_pit;
 
+pub use peach_metrics::{estimate_cpu_freq, get_os_time_freq, read_cpu_timer, read_os_timer};
+pub use peach_pit::{time_block, time_function, time_main};
+
+#[cfg(feature = "profile")]
+const ARRAY_SIZE: usize = 0xFFF;
+
 // Re-export libc_print macros to support a no_std environment
 #[doc(hidden)]
 #[cfg(not(feature = "std"))]
 pub use libc_print::std_name::{print, println};
-pub use peach_metrics::{estimate_cpu_freq, get_os_time_freq, read_cpu_timer, read_os_timer};
-pub use peach_pit::{time_block, time_function, time_main};
+
+// Re-export print macros to support a std environment
+#[doc(hidden)]
+#[cfg(feature = "std")]
+pub use std::{print, println};
 
 #[doc(hidden)]
 #[cfg(feature = "profile")]
 #[derive(Clone)]
-pub struct Timer {
+pub struct __Anchor {
     pub start: u64,
     pub index: usize,
-    pub parent_anchor: usize,
+    pub parent: usize,
     pub old_elapsed_inclusive: u64,
 }
 
 #[doc(hidden)]
 #[cfg(feature = "profile")]
-impl Timer {
+impl __Anchor {
     pub fn new(name: &str, index: usize) -> Self {
-        assert!(index < 4096);
+        assert!(index <= ARRAY_SIZE);
 
         // SAFETY: Assumes single threaded runtime! We've already asserted that the index
-        // is within the __PROFILER's range, and those values are already initialized. The
-        // __GLOBAL_PROFILER_PARENT is already initialized and is only updated as a different Timer
+        // is within the __Anchor's range, and those values are already initialized. The
+        // __PARENT_INDEX is already initialized and is only updated as a different __Anchor
         // is dropped.
-        let timer = unsafe {
+        let anchor = unsafe {
             Self {
                 start: read_cpu_timer(),
                 index,
-                parent_anchor: __GLOBAL_PROFILER_PARENT,
-                old_elapsed_inclusive: __PROFILER[index].elapsed_inclusive,
+                parent: __PARENT_INDEX,
+                old_elapsed_inclusive: __ANCHORS[index].elapsed_inclusive,
             }
         };
 
@@ -118,56 +127,79 @@ impl Timer {
 
         // SAFETY: Assumes single threaded runtime! Label is an reserved 16 bytes.
         // Converting the name to a [u8] slice and then filling the reserved space
-        // shouldn't fail. Updating the __GLOBAL_PROFILER_PARENT with an asserted value.
+        // shouldn't fail. Updating the __PARENT_INDEX with an asserted value.
         unsafe {
             // write the name to the anchor
-            __PROFILER[index].label[..len].copy_from_slice(&label[..len]);
+            __ANCHORS[index].label[..len].copy_from_slice(&label[..len]);
 
-            __GLOBAL_PROFILER_PARENT = index;
+            __PARENT_INDEX = index;
         }
 
-        timer
+        #[cfg(feature = "debug")]
+        // Checks for a collision after the fact so that the label only needs to be copied
+        // from &[u8] -> [u8; 16] once.
+        //
+        // SAFETY: Assumes single threaded runtime! Label is an reserved 16 bytes.
+        // index has already been asserted to fit within the array of __DEBUG_PROFILER.
+        unsafe {
+            let label_value = u128::from_le_bytes(__ANCHORS[index].label);
+            if __DEBUG_ANCHORS[index] != 0 && __DEBUG_ANCHORS[index] != label_value {
+                panic!(
+                    "Hash collisions found! {} and {} both hashed to {index}",
+                    core::str::from_utf8(&__ANCHORS[index].label).unwrap_or(&"invalid name"),
+                    core::str::from_utf8(&label).unwrap_or(&"invalid name"),
+                );
+            }
+            // If match wasn't found add it
+            __DEBUG_ANCHORS[index] = label_value;
+        }
+
+        anchor
     }
 }
 
 #[doc(hidden)]
 #[cfg(feature = "profile")]
-impl Drop for Timer {
+impl Drop for __Anchor {
     fn drop(&mut self) {
-        assert!(self.index < 4096);
-        assert!(self.parent_anchor < 4096);
+        assert!(self.index <= ARRAY_SIZE);
+        assert!(self.parent <= ARRAY_SIZE);
 
         let elapsed = read_cpu_timer() - self.start;
 
-        // SAFETY: Assumes signle threaded runtime! Indexes self.index and self.parent_anchor have
-        // already been asserted to be within the bounds of the __PROFILER array.
+        // SAFETY: Assumes signle threaded runtime! Indexes self.index and self.parent have
+        // already been asserted to be within the bounds of the __ANCHORS array.
         unsafe {
             // set the global parent back to the popped anchor's parent
-            __GLOBAL_PROFILER_PARENT = self.parent_anchor;
+            __PARENT_INDEX = self.parent;
 
-            __PROFILER[self.parent_anchor].elapsed_exclusive = __PROFILER[self.parent_anchor]
+            __ANCHORS[self.parent].elapsed_exclusive = __ANCHORS[self.parent]
                 .elapsed_exclusive
                 .wrapping_sub(elapsed);
-            __PROFILER[self.index].elapsed_exclusive = __PROFILER[self.index]
+            __ANCHORS[self.index].elapsed_exclusive = __ANCHORS[self.index]
                 .elapsed_exclusive
                 .wrapping_add(elapsed);
-            __PROFILER[self.index].elapsed_inclusive = self.old_elapsed_inclusive + elapsed;
-            __PROFILER[self.index].hit_count += 1;
+            __ANCHORS[self.index].elapsed_inclusive = self.old_elapsed_inclusive + elapsed;
+            __ANCHORS[self.index].hit_count += 1;
         }
     }
 }
 
-// Helper function used to hash a timer to reference the anchors
+// const djb2 hash function
 #[doc(hidden)]
 #[cfg(feature = "profile")]
-pub const fn compile_time_hash(s: &str) -> u32 {
+pub const fn __peach_hash(s: &str) -> usize {
     let bytes = s.as_bytes();
-    let mut hash = 5381u32; // DJB2 hash initial value
+    let mut hash = 5381u32;
     let mut i = 0;
     while i < bytes.len() {
         hash = hash.wrapping_mul(33).wrapping_add(bytes[i] as u32);
         i += 1;
     }
+
+    let hash: usize = (hash & 0xFFF) as usize; // Mask to 12 bits (0-4095)
+    assert!(hash <= ARRAY_SIZE);
+
     hash
 }
 
@@ -178,17 +210,17 @@ const LABEL_LENGTH: usize = 16;
 #[doc(hidden)]
 #[cfg(feature = "profile")]
 #[derive(Copy, Clone)]
-pub struct ProfileAnchor {
+pub struct TimedAnchor {
     pub elapsed_exclusive: u64, // cycles not including children
     pub elapsed_inclusive: u64, // cycles including children
-    pub hit_count: u64,
+    pub hit_count: u64,         // number of times Anchor was entered
     pub label: [u8; LABEL_LENGTH],
 }
 
 #[doc(hidden)]
 #[cfg(feature = "profile")]
-impl ProfileAnchor {
-    pub const fn new() -> Self {
+impl TimedAnchor {
+    const fn new() -> Self {
         Self {
             elapsed_exclusive: 0,
             elapsed_inclusive: 0,
@@ -198,18 +230,15 @@ impl ProfileAnchor {
     }
 }
 
-#[doc(hidden)]
-#[cfg(feature = "profile")]
-impl Default for ProfileAnchor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 // initialize the global variables
 #[doc(hidden)]
 #[cfg(feature = "profile")]
-pub static mut __PROFILER: [ProfileAnchor; 4096] = [ProfileAnchor::new(); 4096];
+pub static mut __ANCHORS: [TimedAnchor; ARRAY_SIZE] = [TimedAnchor::new(); ARRAY_SIZE];
 #[doc(hidden)]
 #[cfg(feature = "profile")]
-pub static mut __GLOBAL_PROFILER_PARENT: usize = 0;
+pub static mut __PARENT_INDEX: usize = 0;
+
+#[doc(hidden)]
+#[cfg(all(feature = "profile", feature = "debug"))]
+// stores the name of the function/block as a u128 at the hashed index to check for collisions.
+pub static mut __DEBUG_ANCHORS: [u128; ARRAY_SIZE] = [0; ARRAY_SIZE];

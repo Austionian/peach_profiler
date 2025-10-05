@@ -47,9 +47,10 @@ Total time: 1.7490ms (CPU freq 4300860492)
 ## To Use
 
 The Peach Profiler will only add the instrumentation needed to profile and
-output performance metrics if the `profile` feature is enabled.
+output performance metrics if the `profile` feature is enabled. Without it just
+the `Total time` will be shown if main is marked with `#[time_main]`.
 
-Either add it with the dependancy in the `Cargo.toml` file, i.e.:
+Either add the `profile` feature with the dependancy in the `Cargo.toml` file, i.e.:
 
 ```toml
 [dependencies]
@@ -74,3 +75,9 @@ Run in a no_std env by disabling default features:
 [dependencies]
 peach_profiler = { version = "0.1", default_features = false }
 ```
+
+### Debugging
+
+If you are missing a timed function or block from the output there could be the potential for hash
+collisions that aren't checked for in the default execution. Running Peach Profiler with the debug
+feature will panic with collision information if one is found.
