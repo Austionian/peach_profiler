@@ -43,4 +43,4 @@ profile = ["peach_pit/profile"]
 debug = ["peach_pit/debug"]
 
 # Run the profiler in a std environment.
-std = ["peach_pit/std"]
+std = []
