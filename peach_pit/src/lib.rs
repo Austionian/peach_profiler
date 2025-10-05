@@ -75,8 +75,8 @@ fn print_profile() -> TokenStream2 {
 
         unsafe {
             let mut i = 0;
-            while(i < peach_profiler::__PROFILER.len()) {
-                let anchor = peach_profiler::__PROFILER[i];
+            while(i < peach_profiler::__ANCHORS.len()) {
+                let anchor = peach_profiler::__ANCHORS[i];
                 if anchor.elapsed_inclusive > 0 {
                     peach_profiler::print!("\t{}[{}]: {}, ({:.2}%",
                         core::str::from_utf8(&anchor.label).unwrap_or(&"invalid name"),
@@ -154,12 +154,12 @@ fn expand_timing(mut function: ItemFn) -> TokenStream2 {
 pub fn time_block(input: TokenStream) -> TokenStream {
     let block_name: Lit = parse_macro_input!(input as Lit);
     quote!(
-        // compute the hash here rather than in __Timer::new so that they can be const.
+        // compute the hash here rather than in __Anchor::new so that they can be const.
         const __LOCATION: &str = concat!(file!(), ":", line!());
-        const __HASH: usize = peach_profiler::__peach_profiler_hash(__LOCATION);
+        const __HASH: usize = peach_profiler::__peach_hash(__LOCATION);
 
-        let __peach_timer = unsafe {
-            peach_profiler::__Timer::new(#block_name, __HASH)
+        let __peach_anchor = unsafe {
+            peach_profiler::__Anchor::new(#block_name, __HASH)
         };
     )
     .into()
