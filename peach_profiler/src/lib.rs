@@ -238,3 +238,30 @@ pub static mut __PARENT_TIMER_INDEX: usize = 0;
 #[cfg(all(feature = "profile", feature = "debug"))]
 // stores the name of the function/block as a u128 at the hashed index to check for collisions.
 pub static mut __DEBUG_BLOCKS: [u128; ARRAY_LEN] = [0; ARRAY_LEN];
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    #[cfg(not(feature = "profile"))]
+    fn profile_default() {
+        panic!("Please run tests with `--features profile`!")
+    }
+
+    #[cfg(feature = "profile")]
+    mod profile_tests {
+        #[test]
+        fn peach_hash_hashes_consistently() {
+            let expected_hash = crate::__peach_hash("test");
+            assert_eq!(expected_hash, 2149);
+        }
+
+        #[test]
+        fn timed_block_has_a_new_function() {
+            let expected_timed_block = crate::TimedBlock::new();
+            assert_eq!(expected_timed_block.elapsed_exclusive, 0);
+            assert_eq!(expected_timed_block.elapsed_inclusive, 0);
+            assert_eq!(expected_timed_block.hit_count, 0);
+            assert_eq!(expected_timed_block.label, [0; 16]);
+        }
+    }
+}
