@@ -1,18 +1,44 @@
+//! The pit of peach_profiler--where the macros are made. Not really useful on its own as
+//! attribute macros expand assuming the presence of peach_profiler.
+
+mod expand_main;
+#[cfg(feature = "profile")]
+mod expand_timing;
+
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::parse::{Nothing, Result};
+use syn::ItemFn;
 #[cfg(feature = "profile")]
 use syn::{parse_macro_input, Lit};
-use syn::{parse_quote, ItemFn};
 
+/// Attribtue macro to instrumentally time a binary.
+///
+/// ```ignore
+/// #[time_main]
+/// fn main() {
+///     // ..
+/// }
+///
+/// // Will print out total time taken:
+/// ______________________________________________________
+/// Total time: 1.7120ms (CPU freq 4300627921)
+///
+/// // Will print out total time and functions or blocks marked with #[time_function] and
+/// // time_block!(), respectively with `--feature=profile`
+/// ______________________________________________________
+/// Total time: 1.7120ms (CPU freq 4300627921)
+///     answer_block[1]: 7396, (0.10%, 99.71% w/children)
+///     fibonacci[57313]: 7334252, (99.61%)
+/// ```
 #[proc_macro_attribute]
 pub fn time_main(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = TokenStream2::from(args);
     let input = TokenStream2::from(input);
     TokenStream::from(match parse(args, input.clone()) {
         Ok(function) => {
-            let expanded = expand_main(function);
+            let expanded = expand_main::expand_main(function);
             quote! {
                 #expanded
             }
@@ -27,6 +53,21 @@ pub fn time_main(args: TokenStream, input: TokenStream) -> TokenStream {
     })
 }
 
+/// Attribtue macro to instrumentally time a function and how many times it was entered.
+///
+/// ```ignore
+/// #[time_function]
+/// fn some_function() {
+///     // ..
+/// }
+///
+/// // Will produce something like this with the profile feature enabled:
+///     some_function[57313]: 7334252, (99.61%)
+///     // function name - _limited to 16 bytes_
+///     // [hit count] - number of times the function was executed
+///     // number of cycles spent executing the function
+///     // (percent of time spent in the function relative to the total time.)
+/// ```
 #[cfg(feature = "profile")]
 #[proc_macro_attribute]
 pub fn time_function(args: TokenStream, input: TokenStream) -> TokenStream {
@@ -34,7 +75,7 @@ pub fn time_function(args: TokenStream, input: TokenStream) -> TokenStream {
     let input = TokenStream2::from(input);
     TokenStream::from(match parse(args, input.clone()) {
         Ok(function) => {
-            let expanded = expand_timing(function);
+            let expanded = expand_timing::expand_timing(function);
             quote! {
                 #expanded
             }
@@ -49,6 +90,46 @@ pub fn time_function(args: TokenStream, input: TokenStream) -> TokenStream {
     })
 }
 
+/// Proc macro to instrumentally time a block of code.
+///
+/// ```ignore
+/// let output = {
+///     time_block!("block_name");
+///
+///     // ..
+/// }
+///
+/// // Or in a closure
+/// let a = || {
+///     time_block!("closure_time");
+///
+///     // ..
+/// };
+///
+/// // Will produce something like this with the profile feature enabled:
+///     block_name[57313]: 7334252, (99.61%)
+///     // name given to the block - _limited to 16 bytes_
+///     // [hit count] - number of times this block was executed
+///     // number of cycles spent executing this block
+///     // (percent of time spent in this block relative to the total time.)
+/// ```
+#[cfg(feature = "profile")]
+#[proc_macro]
+pub fn time_block(input: TokenStream) -> TokenStream {
+    let block_name: Lit = parse_macro_input!(input as Lit);
+    quote!(
+        // compute the hash here rather than in __Timer::new so that they can be const.
+        const __LOCATION: &str = concat!(file!(), ":", line!());
+        const __HASH: usize = peach_profiler::__peach_hash(__LOCATION);
+
+        let __peach_timer = unsafe {
+            peach_profiler::__Timer::new(#block_name, __HASH)
+        };
+    )
+    .into()
+}
+
+// Function to exact function AST for time_main and time_function
 fn parse(args: TokenStream2, input: TokenStream2) -> Result<ItemFn> {
     let function: ItemFn = syn::parse2(input)?;
     let _: Nothing = syn::parse2::<Nothing>(args)?;
@@ -56,115 +137,7 @@ fn parse(args: TokenStream2, input: TokenStream2) -> Result<ItemFn> {
     Ok(function)
 }
 
-fn print_baseline() -> TokenStream2 {
-    quote! {
-        peach_profiler::println!("\n______________________________________________________");
-        peach_profiler::println!(
-            "Total time: {:.4}ms (CPU freq {:.0})",
-            __total_time as f64 / 1_000.0,
-            peach_profiler::get_os_time_freq() as f64 * __total_cpu as f64 / __total_time as f64
-        );
-    }
-}
-
-#[cfg(feature = "profile")]
-fn print_profile() -> TokenStream2 {
-    let baseline_print = print_baseline();
-    quote! {
-        #baseline_print;
-
-        unsafe {
-            let mut i = 0;
-            while(i < peach_profiler::__ANCHORS.len()) {
-                let anchor = peach_profiler::__ANCHORS[i];
-                if anchor.elapsed_inclusive > 0 {
-                    peach_profiler::print!("\t{}[{}]: {}, ({:.2}%",
-                        core::str::from_utf8(&anchor.label).unwrap_or(&"invalid name"),
-                        anchor.hit_count,
-                        anchor.elapsed_exclusive,
-                       (anchor.elapsed_exclusive as f64 / __total_cpu as f64) * 100.0,
-                    );
-                    if anchor.elapsed_exclusive != anchor.elapsed_inclusive {
-                        peach_profiler::print!(", {:.2}% w/children",
-                            (anchor.elapsed_inclusive as f64 / __total_cpu as f64) * 100.0,
-                        );
-                    }
-                    peach_profiler::print!(")\n");
-                }
-
-                i += 1;
-            }
-        }
-    }
-}
-
-#[cfg(not(feature = "profile"))]
-fn print_profile() -> TokenStream2 {
-    print_baseline()
-}
-
-fn expand_main(mut function: ItemFn) -> TokenStream2 {
-    let stmts = function.block.stmts;
-    let print = print_profile();
-    function.block = Box::new(parse_quote!({
-        let __time_start = peach_profiler::read_os_timer();
-        let __cpu_start = peach_profiler::read_cpu_timer();
-
-        #(#stmts)*
-
-        let __cpu_end = peach_profiler::read_cpu_timer();
-        let __time_end = peach_profiler::read_os_timer();
-
-        let __total_cpu = __cpu_end - __cpu_start;
-        let __total_time = __time_end - __time_start;
-
-        #print;
-    }));
-
-    quote!(
-        #function
-    )
-}
-
-#[cfg(feature = "profile")]
-fn expand_timing(mut function: ItemFn) -> TokenStream2 {
-    let name = function.sig.ident.clone().to_string();
-    let stmts = function.block.stmts;
-    function.block = Box::new(parse_quote!({
-        peach_profiler::time_block!(#name);
-
-        #(#stmts)*
-    }));
-
-    quote!(#function)
-}
-
-/// Macro to instrumentally time a block of code.
-/// Requires that main is marked with `#[time_main]`
-///
-/// ```ignore
-/// let output = {
-///     time_block!("block_name");
-///
-///     // expressions
-/// }
-/// ```
-#[cfg(feature = "profile")]
-#[proc_macro]
-pub fn time_block(input: TokenStream) -> TokenStream {
-    let block_name: Lit = parse_macro_input!(input as Lit);
-    quote!(
-        // compute the hash here rather than in __Anchor::new so that they can be const.
-        const __LOCATION: &str = concat!(file!(), ":", line!());
-        const __HASH: usize = peach_profiler::__peach_hash(__LOCATION);
-
-        let __peach_anchor = unsafe {
-            peach_profiler::__Anchor::new(#block_name, __HASH)
-        };
-    )
-    .into()
-}
-
+// With profiling disabled, return the function tokens as is.
 #[doc(hidden)]
 #[cfg(not(feature = "profile"))]
 #[proc_macro_attribute]
@@ -172,6 +145,7 @@ pub fn time_function(_args: TokenStream, input: TokenStream) -> TokenStream {
     input
 }
 
+// With profiling disabled, add a comment in the place of the proc macro.
 #[doc(hidden)]
 #[cfg(not(feature = "profile"))]
 #[proc_macro]
