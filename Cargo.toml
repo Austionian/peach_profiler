@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["peach_pit", "peach_profiler", "peach_metrics"]
+members = ["peach_pit", "peach_profiler", "peach_metrics", "test_suite"]
 
 [workspace.package]
 authors = ["Austin Rooks"]

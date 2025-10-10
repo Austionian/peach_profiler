@@ -106,6 +106,9 @@ impl __Timer {
     pub fn new(name: &str, index: usize) -> Self {
         assert!(index <= ARRAY_LEN);
 
+        // A block with an empty name ("") doesn't make sense
+        debug_assert!(!name.is_empty());
+
         // SAFETY: Assumes single threaded runtime! We've already asserted that the index
         // is within the __Timer's range, and those values are already initialized. The
         // __PARENT_TIMER_INDEX is already initialized and is only updated as a different __Timer
@@ -141,6 +144,15 @@ impl __Timer {
         unsafe {
             let label_value = u128::from_le_bytes(__BLOCKS[index].label);
 
+            // If __DEBUG_BLOCKS[index] == 0 that means it hasn't been initialized with a block
+            // yet, so there's nothing to check. (Unless a label is "" which wouldn't make sense
+            // and would panic in debug builds.)
+            //
+            // If the `label_value` which is the label of the  block that was just added to
+            // __BLOCKS, doesn't equal what's already in __DEBUG_BLOCKS, that means the hash of the
+            // new block's location collided with a block with a different label and was overriden.
+            // The same block can write to the same place in the __BLOCKS array multiple times, but
+            // its label should never change once set.
             assert!(
                 !(__DEBUG_BLOCKS[index] != 0 && __DEBUG_BLOCKS[index] != label_value),
                 "Hash collisions found! {} and {} both hashed to {index}",

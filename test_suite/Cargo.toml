@@ -1,0 +1,16 @@
+[package]
+name = "test_suite"
+version = "0.1.0"
+edition = "2024"
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+
+[dependencies]
+peach_profiler = { path = "../peach_profiler", features = ["profile"] }
+
+[dev-dependencies]
+trybuild = "1"
+
+[lints]
+workspace = true
