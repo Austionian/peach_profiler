@@ -45,9 +45,6 @@
 //!             1
 //!         );
 //!     }
-//!
-//!     #[cfg(not(feature = "profile"))]
-//!     panic!("Profile feature must be enabled.");
 //!}
 //!
 //!
@@ -143,13 +140,15 @@ impl __Timer {
         // index has already been asserted to fit within the array of __DEBUG_PROFILER.
         unsafe {
             let label_value = u128::from_le_bytes(__BLOCKS[index].label);
-            if __DEBUG_BLOCKS[index] != 0 && __DEBUG_BLOCKS[index] != label_value {
-                panic!(
-                    "Hash collisions found! {} and {} both hashed to {index}",
-                    core::str::from_utf8(&__BLOCKS[index].label).unwrap_or(&"invalid name"),
-                    core::str::from_utf8(&label).unwrap_or(&"invalid name"),
-                );
-            }
+
+            assert!(
+                !(__DEBUG_BLOCKS[index] != 0 && __DEBUG_BLOCKS[index] != label_value),
+                "Hash collisions found! {} and {} both hashed to {index}",
+                core::str::from_utf8(&__DEBUG_BLOCKS[index].to_le_bytes())
+                    .unwrap_or("invalid name"),
+                core::str::from_utf8(label).unwrap_or("invalid name"),
+            );
+
             // If match wasn't found add it
             __DEBUG_BLOCKS[index] = label_value;
         }
@@ -187,6 +186,7 @@ impl Drop for __Timer {
 // const djb2 hash function
 #[doc(hidden)]
 #[cfg(feature = "profile")]
+#[must_use]
 pub const fn __peach_hash(s: &str) -> usize {
     let bytes = s.as_bytes();
     let mut hash = 5381u32;
@@ -241,12 +241,6 @@ pub static mut __DEBUG_BLOCKS: [u128; ARRAY_LEN] = [0; ARRAY_LEN];
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    #[cfg(not(feature = "profile"))]
-    fn profile_default() {
-        panic!("Please run tests with `--features profile`!")
-    }
-
     #[cfg(feature = "profile")]
     mod profile_tests {
         #[test]

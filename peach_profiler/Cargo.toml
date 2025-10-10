@@ -40,7 +40,8 @@ profile = ["peach_pit/profile"]
 
 # Enable debugging profiling instrumentation. Can help surface hash collisions
 # and/or add/sub overflows.
-debug = ["peach_pit/debug"]
+# Debug only makes sense when profiling is enabled.
+debug = ["profile", "peach_pit/debug"]
 
 # Run the profiler in a std environment.
 std = []
