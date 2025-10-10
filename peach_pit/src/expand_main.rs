@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{parse_quote, ItemFn};
+use syn::{ItemFn, parse_quote};
 
 // Adds code to print the total time the binary took to execute.
 fn print_baseline() -> TokenStream2 {

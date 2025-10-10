@@ -1,5 +1,5 @@
 //! The pit of peach_profiler--where the macros are made. Not really useful on its own as
-//! attribute macros expand assuming the presence of peach_profiler.
+//! attribute macros expand assuming the presence of `peach_profiler`.
 
 mod expand_main;
 #[cfg(feature = "profile")]
@@ -8,10 +8,10 @@ mod expand_timing;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::parse::{Nothing, Result};
 use syn::ItemFn;
+use syn::parse::{Nothing, Result};
 #[cfg(feature = "profile")]
-use syn::{parse_macro_input, Lit};
+use syn::{Lit, parse_macro_input};
 
 /// Attribtue macro to instrumentally time a binary.
 ///

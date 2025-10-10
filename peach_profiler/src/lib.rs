@@ -217,6 +217,7 @@ pub const fn __peach_hash(s: &str) -> usize {
 #[cfg(feature = "profile")]
 const LABEL_LENGTH: usize = 16;
 
+#[doc(hidden)]
 #[cfg(feature = "profile")]
 #[derive(Copy, Clone)]
 pub struct TimedBlock {

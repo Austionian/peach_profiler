@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{parse_quote, ItemFn};
+use syn::{ItemFn, parse_quote};
 
 // Creates a time_block! with function's name that will be dropped and recorded in the profile
 // when the function is completed.
