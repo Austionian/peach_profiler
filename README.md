@@ -13,9 +13,9 @@ Click to show Cargo.toml.
 
 ```toml
 [dependencies]
-peach_profiler = "0.1"
+peach_profiler = "0.2"
 # Alternatively list peach_profiler like so to always enable profiling.
-# peach_profiler = { version = "0.1", features=["profile"] }
+# peach_profiler = { version = "0.2", features=["profile"] }
 
 [features]
 # Point your profile feature are the peach_profilers profile feature. Running
@@ -77,7 +77,7 @@ Either add it with the dependancy in the `Cargo.toml` file, i.e.:
 
 ```toml
 [dependencies]
-peach_profiler = { version = "0.1", features = ["profile"] }
+peach_profiler = { version = "0.2", features = ["profile"] }
 ```
 
 to always profile your code.
@@ -96,7 +96,7 @@ Run in a no_std env by disabling default features:
 
 ```toml
 [dependencies]
-peach_profiler = { version = "0.1", default_features = false }
+peach_profiler = { version = "0.2", default_features = false }
 ```
 
 ### Debugging

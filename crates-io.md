@@ -54,7 +54,7 @@ Either add the `profile` feature with the dependancy in the `Cargo.toml` file, i
 
 ```toml
 [dependencies]
-peach_profiler = { version = "0.1", features = ["profile"]}
+peach_profiler = { version = "0.2", features = ["profile"]}
 ```
 
 to always profile your code.
@@ -73,7 +73,7 @@ Run in a no_std env by disabling default features:
 
 ```toml
 [dependencies]
-peach_profiler = { version = "0.1", default_features = false }
+peach_profiler = { version = "0.2", default_features = false }
 ```
 
 ### Debugging
