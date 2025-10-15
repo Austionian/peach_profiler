@@ -1,15 +1,16 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{ItemFn, parse_quote};
+use syn::{parse_quote, ItemFn};
 
 // Adds code to print the total time the binary took to execute.
 fn print_baseline() -> TokenStream2 {
     quote! {
+        let timerFreq = peach_profiler::get_os_time_freq() as f64* __total_cpu as f64 / __total_time as f64;
         peach_profiler::println!("\n______________________________________________________");
         peach_profiler::println!(
             "Total time: {:.4}ms (CPU freq {:.0})",
             __total_time as f64 / 1_000.0,
-            peach_profiler::get_os_time_freq() as f64 * __total_cpu as f64 / __total_time as f64
+             timerFreq
         );
     }
 }
@@ -38,7 +39,20 @@ fn print_profile() -> TokenStream2 {
                             (block.elapsed_inclusive as f64 / __total_cpu as f64) * 100.0,
                         );
                     }
-                    peach_profiler::print!(")\n");
+                    peach_profiler::print!(")");
+                    if block.processed_byte_count > 0 {
+                        const MEGABYTE: f64 = 1024.0 * 1024.0;
+                        const GIGABYTE: f64 = MEGABYTE * 1024.0;
+
+                        let seconds = block.elapsed_inclusive as f64 / timerFreq;
+                        let bytes_per_second = block.processed_byte_count as f64 / seconds;
+                        let megabytes = block.processed_byte_count as f64 / MEGABYTE;
+                        let gigabytes_per_second = bytes_per_second / GIGABYTE;
+
+                        peach_profiler::print!(" {megabytes:.3}mb at {gigabytes_per_second:.2}gb/s");
+                    }
+
+                    peach_profiler::print!("\n");
                 }
 
                 i += 1;

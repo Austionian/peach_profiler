@@ -75,7 +75,7 @@ extern crate peach_metrics;
 extern crate peach_pit;
 
 pub use peach_metrics::{estimate_cpu_freq, get_os_time_freq, read_cpu_timer, read_os_timer};
-pub use peach_pit::{time_block, time_function, time_main};
+pub use peach_pit::{time_bandwidth, time_block, time_function, time_main};
 
 #[cfg(feature = "profile")]
 const ARRAY_LEN: usize = 0xFFF;
@@ -98,12 +98,13 @@ pub struct __Timer {
     pub index: usize,
     pub parent: usize,
     pub old_elapsed_inclusive: u64,
+    pub bytes: u64,
 }
 
 #[doc(hidden)]
 #[cfg(feature = "profile")]
 impl __Timer {
-    pub fn new(name: &str, index: usize) -> Self {
+    pub fn new(name: &str, bytes: u64, index: usize) -> Self {
         assert!(index <= ARRAY_LEN);
 
         // A block with an empty name ("") doesn't make sense
@@ -119,6 +120,7 @@ impl __Timer {
                 index,
                 parent: __PARENT_TIMER_INDEX,
                 old_elapsed_inclusive: __BLOCKS[index].elapsed_inclusive,
+                bytes,
             }
         };
 
@@ -181,9 +183,10 @@ impl Drop for __Timer {
         // SAFETY: Assumes signle threaded runtime! Indexes self.index and self.parent have
         // already been asserted to be within the bounds of the __BLOCKS array.
         unsafe {
-            // set the global parent back to the popped timer's parent
+            // Set the global parent back to the popped timer's parent.
             __PARENT_TIMER_INDEX = self.parent;
 
+            // Update the timer values.
             __BLOCKS[self.parent].elapsed_exclusive = __BLOCKS[self.parent]
                 .elapsed_exclusive
                 .wrapping_sub(elapsed);
@@ -191,6 +194,7 @@ impl Drop for __Timer {
                 __BLOCKS[self.index].elapsed_exclusive.wrapping_add(elapsed);
             __BLOCKS[self.index].elapsed_inclusive = self.old_elapsed_inclusive + elapsed;
             __BLOCKS[self.index].hit_count += 1;
+            __BLOCKS[self.index].processed_byte_count += self.bytes;
         }
     }
 }
@@ -221,9 +225,10 @@ const LABEL_LENGTH: usize = 16;
 #[cfg(feature = "profile")]
 #[derive(Copy, Clone)]
 pub struct TimedBlock {
-    pub elapsed_exclusive: u64, // cycles not including children
-    pub elapsed_inclusive: u64, // cycles including children
-    pub hit_count: u64,         // number of times timed block was entered
+    pub elapsed_exclusive: u64,    // cycles not including children
+    pub elapsed_inclusive: u64,    // cycles including children
+    pub hit_count: u64,            // number of times timed block was entered
+    pub processed_byte_count: u64, // number of bytes processed in block's execution
     pub label: [u8; LABEL_LENGTH],
 }
 
@@ -234,6 +239,7 @@ impl TimedBlock {
             elapsed_exclusive: 0,
             elapsed_inclusive: 0,
             hit_count: 0,
+            processed_byte_count: 0,
             label: [0; LABEL_LENGTH],
         }
     }

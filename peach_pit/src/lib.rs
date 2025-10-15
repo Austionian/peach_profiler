@@ -8,10 +8,10 @@ mod expand_timing;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::ItemFn;
-use syn::parse::{Nothing, Result};
+use syn::parse::{Nothing, Parse, ParseStream, Result};
 #[cfg(feature = "profile")]
-use syn::{Lit, parse_macro_input};
+use syn::{parse_macro_input, Expr, Lit};
+use syn::{ItemFn, LitStr, Token};
 
 /// Attribtue macro to instrumentally time a binary.
 ///
@@ -123,7 +123,44 @@ pub fn time_block(input: TokenStream) -> TokenStream {
         const __HASH: usize = peach_profiler::__peach_hash(__LOCATION);
 
         let __peach_timer = unsafe {
-            peach_profiler::__Timer::new(#block_name, __HASH)
+            peach_profiler::__Timer::new(#block_name, 0, __HASH)
+        };
+    )
+    .into()
+}
+
+#[cfg(feature = "profile")]
+struct TimeBandwidthArgs {
+    name: LitStr,
+    _comma: Token![,],
+    bytes: Expr,
+}
+
+#[cfg(feature = "profile")]
+impl Parse for TimeBandwidthArgs {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        Ok(TimeBandwidthArgs {
+            name: input.parse()?,
+            _comma: input.parse()?,
+            bytes: input.parse()?,
+        })
+    }
+}
+
+#[cfg(feature = "profile")]
+#[proc_macro]
+pub fn time_bandwidth(input: TokenStream) -> TokenStream {
+    let TimeBandwidthArgs { name, bytes, .. } = parse_macro_input!(input as TimeBandwidthArgs);
+
+    let block_name = name.value();
+
+    quote!(
+        // compute the hash here rather than in __Timer::new so that they can be const.
+        const __LOCATION: &str = concat!(file!(), ":", line!());
+        const __HASH: usize = peach_profiler::__peach_hash(__LOCATION);
+
+        let __peach_timer = unsafe {
+            peach_profiler::__Timer::new(#block_name, #bytes, __HASH)
         };
     )
     .into()
@@ -150,6 +187,17 @@ pub fn time_function(_args: TokenStream, input: TokenStream) -> TokenStream {
 #[cfg(not(feature = "profile"))]
 #[proc_macro]
 pub fn time_block(_input: TokenStream) -> TokenStream {
+    quote! {
+        // profiling disabled
+    }
+    .into()
+}
+
+// With profiling disabled, add a comment in the place of the proc macro.
+#[doc(hidden)]
+#[cfg(not(feature = "profile"))]
+#[proc_macro]
+pub fn time_bandwidth(_input: TokenStream) -> TokenStream {
     quote! {
         // profiling disabled
     }
