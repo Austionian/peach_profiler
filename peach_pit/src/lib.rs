@@ -75,7 +75,7 @@ pub fn time_main(args: TokenStream, input: TokenStream) -> TokenStream {
 /// //  - function name - _limited to 16 bytes_
 /// //  - [hit count] - number of times this block was executed
 /// //  - number of cycles spent executing this block
-/// //  - (percent of time spent in this block relative to the total time of the binary's run.)
+/// //  - (percent of time spent in this block relative to the total time of the binary's run)
 /// ```
 #[cfg(feature = "profile")]
 #[proc_macro_attribute]

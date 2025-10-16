@@ -284,16 +284,18 @@ mod tests {
 
 /// Macro to instrumentally time a block of code.
 ///
-/// Provide just the block's name or the block's name and the number of bytes the block of
+/// Provide the block's name or the block's name and the number of bytes the block of
 /// code will process to capture the block's bandwidth.
 ///
-/// ```ignore
-/// // In a block of code
+/// ```
+/// use peach_profiler::time_block;
+///
 /// let output = {
+///     // In a block of code
 ///     time_block!("block_name");
 ///
 ///     // ..
-/// }
+/// };
 ///
 /// // Or in a closure
 /// let a = || {
@@ -308,19 +310,21 @@ mod tests {
 ///
 ///     // ..
 /// };
+/// ```
 ///
-/// // Will produce something like this with the profile feature enabled:
+/// Which will produce something like this with the profile feature enabled:
+/// ```console
 ///     block_name[57313]: 7334252, (54.61%)
 ///     closure_time[23]: 12323, (12.45%)
 ///     block_with_bandwidth[1200]: 789112, (44.85%) 1.229mb at 3.71gb/s
-///
-/// // ^ Output:
-/// //  - name given to the block - _limited to 16 bytes_
-/// //  - [hit count] - number of times this block was executed
-/// //  - number of cycles spent executing this block
-/// //  - (percent of time spent in this block relative to the total time of the binary's run.)
-/// //  - number of mb executed and it's gb per second bandwidth.
 /// ```
+///
+/// ^ Output:
+///   - name given to the block - _limited to 16 bytes_
+///   - [hit count] - number of times this block was executed
+///   - number of clock cycles spent executing this block
+///   - (percent of time spent in this block relative to the total time of the binary's run)
+///   - number of mb executed and it's gb per second bandwidth
 #[macro_export]
 macro_rules! time_block {
     ($name:expr) => {
