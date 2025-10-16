@@ -63,10 +63,12 @@ pub fn time_main(args: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// // Will produce something like this with the profile feature enabled:
 ///     some_function[57313]: 7334252, (99.61%)
-///     // function name - _limited to 16 bytes_
-///     // [hit count] - number of times the function was executed
-///     // number of cycles spent executing the function
-///     // (percent of time spent in the function relative to the total time.)
+///
+/// // ^ Output:
+/// //  - function name - _limited to 16 bytes_
+/// //  - [hit count] - number of times this block was executed
+/// //  - number of cycles spent executing this block
+/// //  - (percent of time spent in this block relative to the total time of the binary's run.)
 /// ```
 #[cfg(feature = "profile")]
 #[proc_macro_attribute]
@@ -108,11 +110,12 @@ impl Parse for TimeBandwidthArgs {
     }
 }
 
-#[doc(hidden)]
 #[cfg(feature = "profile")]
 #[proc_macro]
-// The pit of the peach_pit. Creates the hash based on its location and then the timer. Hidden from
-// documentation as it should be used through peach_profiler::time_block!() instead of directly.
+/// Proc macro to instrumentally time a block of code.
+///
+/// Creates the hash based on its location and then the timer. Quasi-private as it should be used
+/// through peach_profiler::time_block!() rather than directly.
 pub fn __time_bandwidth(input: TokenStream) -> TokenStream {
     let TimeBandwidthArgs { name, bytes, .. } = parse_macro_input!(input as TimeBandwidthArgs);
 
