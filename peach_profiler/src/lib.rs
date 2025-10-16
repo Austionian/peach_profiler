@@ -75,7 +75,7 @@ extern crate peach_metrics;
 extern crate peach_pit;
 
 pub use peach_metrics::{estimate_cpu_freq, get_os_time_freq, read_cpu_timer, read_os_timer};
-pub use peach_pit::{time_bandwidth, time_block, time_function, time_main};
+pub use peach_pit::{__time_bandwidth, time_function, time_main};
 
 #[cfg(feature = "profile")]
 const ARRAY_LEN: usize = 0xFFF;
@@ -277,4 +277,49 @@ mod tests {
             assert_eq!(expected_timed_block.label, [0; 16]);
         }
     }
+}
+
+/// Macro to instrumentally time a block of code.
+///
+/// ```ignore
+/// let output = {
+///     time_block!("block_name");
+///
+///     // ..
+/// }
+///
+/// // Or in a closure
+/// let a = || {
+///     time_block!("closure_time");
+///
+///     // ..
+/// };
+///
+/// // Or with a number of bytes to capture the block's bandwidth
+/// let output = {
+///     time_block!("block_with_bandwidth", 1024);
+///
+///     // ..
+/// };
+///
+/// // Will produce something like this with the profile feature enabled:
+///     block_name[57313]: 7334252, (54.61%)
+///     closure_time[23]: 12323, (12.45%)
+///     block_with_bandwidth[1200]: 789112, (44.85%) 3645.105mb at 3.71gb/s
+///
+///     // name given to the block - _limited to 16 bytes_
+///     // [hit count] - number of times this block was executed
+///     // number of cycles spent executing this block
+///     // (percent of time spent in this block relative to the total time.)
+///     // number of mb executed and it's gigs per second.
+/// ```
+#[macro_export]
+macro_rules! time_block {
+    ($name:expr) => {{
+        peach_profiler::__time_bandwidth!($name, 0);
+    }};
+
+    ($name:expr, $bytes:expr) => {{
+        peach_profiler::__time_bandwidth!($name, $bytes);
+    }};
 }
