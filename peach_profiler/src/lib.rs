@@ -323,11 +323,11 @@ mod tests {
 /// ```
 #[macro_export]
 macro_rules! time_block {
-    ($name:expr) => {{
+    ($name:expr) => {
         peach_profiler::__time_bandwidth!($name, 0);
-    }};
+    };
 
-    ($name:expr, $bytes:expr) => {{
+    ($name:expr, $bytes:expr) => {
         peach_profiler::__time_bandwidth!($name, $bytes);
-    }};
+    };
 }
