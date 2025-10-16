@@ -3,13 +3,16 @@ use quote::quote;
 use syn::{ItemFn, parse_quote};
 
 // Adds code to print the total time the binary took to execute.
+// Is always added whether the profile feature is enabled or not.
 fn print_baseline() -> TokenStream2 {
     quote! {
+        let __cpu_freq =
+            peach_profiler::get_os_time_freq() as f64 * __total_cpu as f64 / __total_time as f64;
         peach_profiler::println!("\n______________________________________________________");
         peach_profiler::println!(
             "Total time: {:.4}ms (CPU freq {:.0})",
             __total_time as f64 / 1_000.0,
-            peach_profiler::get_os_time_freq() as f64 * __total_cpu as f64 / __total_time as f64
+            __cpu_freq
         );
     }
 }
@@ -23,25 +26,40 @@ fn print_profile() -> TokenStream2 {
         #baseline_print;
 
         unsafe {
-            let mut i = 0;
-            while(i < peach_profiler::__BLOCKS.len()) {
-                let block = peach_profiler::__BLOCKS[i];
-                if block.elapsed_inclusive > 0 {
+            let mut __print_i = 0;
+            while(__print_i < peach_profiler::__BLOCKS.len()) {
+                let __block = peach_profiler::__BLOCKS[__print_i];
+                if __block.elapsed_inclusive > 0 {
                     peach_profiler::print!("\t{}[{}]: {}, ({:.2}%",
-                        core::str::from_utf8(&block.label).unwrap_or(&"invalid name"),
-                        block.hit_count,
-                        block.elapsed_exclusive,
-                       (block.elapsed_exclusive as f64 / __total_cpu as f64) * 100.0,
+                        core::str::from_utf8(&__block.label).unwrap_or(&"invalid name"),
+                        __block.hit_count,
+                        __block.elapsed_exclusive,
+                       (__block.elapsed_exclusive as f64 / __total_cpu as f64) * 100.0,
                     );
-                    if block.elapsed_exclusive != block.elapsed_inclusive {
+                    if __block.elapsed_exclusive != __block.elapsed_inclusive {
                         peach_profiler::print!(", {:.2}% w/children",
-                            (block.elapsed_inclusive as f64 / __total_cpu as f64) * 100.0,
+                            (__block.elapsed_inclusive as f64 / __total_cpu as f64) * 100.0,
                         );
                     }
-                    peach_profiler::print!(")\n");
+                    peach_profiler::print!(")");
+                    if __block.processed_byte_count > 0 {
+                        const __MEGABYTE: f64 = 1024.0 * 1024.0;
+                        const __GIGABYTE: f64 = __MEGABYTE * 1024.0;
+
+                        let __seconds = __block.elapsed_inclusive as f64 / __cpu_freq;
+                        let __bytes_per_second = __block.processed_byte_count as f64 / __seconds;
+                        let __megabytes = __block.processed_byte_count as f64 / __MEGABYTE;
+                        let __gigabytes_per_second = __bytes_per_second / __GIGABYTE;
+
+                        peach_profiler::print!(
+                            " {__megabytes:.3}mb at {__gigabytes_per_second:.2}gb/s"
+                        );
+                    }
+
+                    peach_profiler::print!("\n");
                 }
 
-                i += 1;
+                __print_i += 1;
             }
         }
     }

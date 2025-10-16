@@ -75,7 +75,10 @@ extern crate peach_metrics;
 extern crate peach_pit;
 
 pub use peach_metrics::{estimate_cpu_freq, get_os_time_freq, read_cpu_timer, read_os_timer};
-pub use peach_pit::{time_block, time_function, time_main};
+pub use peach_pit::{time_function, time_main};
+
+#[doc(hidden)]
+pub use peach_pit::__time_bandwidth;
 
 #[cfg(feature = "profile")]
 const ARRAY_LEN: usize = 0xFFF;
@@ -98,12 +101,13 @@ pub struct __Timer {
     pub index: usize,
     pub parent: usize,
     pub old_elapsed_inclusive: u64,
+    pub bytes: usize,
 }
 
 #[doc(hidden)]
 #[cfg(feature = "profile")]
 impl __Timer {
-    pub fn new(name: &str, index: usize) -> Self {
+    pub fn new(name: &str, bytes: usize, index: usize) -> Self {
         assert!(index <= ARRAY_LEN);
 
         // A block with an empty name ("") doesn't make sense
@@ -119,6 +123,7 @@ impl __Timer {
                 index,
                 parent: __PARENT_TIMER_INDEX,
                 old_elapsed_inclusive: __BLOCKS[index].elapsed_inclusive,
+                bytes,
             }
         };
 
@@ -181,9 +186,10 @@ impl Drop for __Timer {
         // SAFETY: Assumes signle threaded runtime! Indexes self.index and self.parent have
         // already been asserted to be within the bounds of the __BLOCKS array.
         unsafe {
-            // set the global parent back to the popped timer's parent
+            // Set the global parent back to the popped timer's parent.
             __PARENT_TIMER_INDEX = self.parent;
 
+            // Update the timer values.
             __BLOCKS[self.parent].elapsed_exclusive = __BLOCKS[self.parent]
                 .elapsed_exclusive
                 .wrapping_sub(elapsed);
@@ -191,6 +197,7 @@ impl Drop for __Timer {
                 __BLOCKS[self.index].elapsed_exclusive.wrapping_add(elapsed);
             __BLOCKS[self.index].elapsed_inclusive = self.old_elapsed_inclusive + elapsed;
             __BLOCKS[self.index].hit_count += 1;
+            __BLOCKS[self.index].processed_byte_count += self.bytes;
         }
     }
 }
@@ -221,9 +228,10 @@ const LABEL_LENGTH: usize = 16;
 #[cfg(feature = "profile")]
 #[derive(Copy, Clone)]
 pub struct TimedBlock {
-    pub elapsed_exclusive: u64, // cycles not including children
-    pub elapsed_inclusive: u64, // cycles including children
-    pub hit_count: u64,         // number of times timed block was entered
+    pub elapsed_exclusive: u64,      // cycles not including children
+    pub elapsed_inclusive: u64,      // cycles including children
+    pub hit_count: u64,              // number of times timed block was entered
+    pub processed_byte_count: usize, // number of bytes processed in block's execution
     pub label: [u8; LABEL_LENGTH],
 }
 
@@ -234,6 +242,7 @@ impl TimedBlock {
             elapsed_exclusive: 0,
             elapsed_inclusive: 0,
             hit_count: 0,
+            processed_byte_count: 0,
             label: [0; LABEL_LENGTH],
         }
     }
@@ -271,4 +280,54 @@ mod tests {
             assert_eq!(expected_timed_block.label, [0; 16]);
         }
     }
+}
+
+/// Macro to instrumentally time a block of code.
+///
+/// Provide just the block's name or the block's name and the number of bytes the block of
+/// code will process to capture the block's bandwidth.
+///
+/// ```ignore
+/// // In a block of code
+/// let output = {
+///     time_block!("block_name");
+///
+///     // ..
+/// }
+///
+/// // Or in a closure
+/// let a = || {
+///     time_block!("closure_time");
+///
+///     // ..
+/// };
+///
+/// // Or with a number of bytes to capture the block's bandwidth
+/// let output = {
+///     time_block!("block_with_bandwidth", 1024);
+///
+///     // ..
+/// };
+///
+/// // Will produce something like this with the profile feature enabled:
+///     block_name[57313]: 7334252, (54.61%)
+///     closure_time[23]: 12323, (12.45%)
+///     block_with_bandwidth[1200]: 789112, (44.85%) 1.229mb at 3.71gb/s
+///
+/// // ^ Output:
+/// //  - name given to the block - _limited to 16 bytes_
+/// //  - [hit count] - number of times this block was executed
+/// //  - number of cycles spent executing this block
+/// //  - (percent of time spent in this block relative to the total time of the binary's run.)
+/// //  - number of mb executed and it's gb per second bandwidth.
+/// ```
+#[macro_export]
+macro_rules! time_block {
+    ($name:expr) => {{
+        peach_profiler::__time_bandwidth!($name, 0);
+    }};
+
+    ($name:expr, $bytes:expr) => {{
+        peach_profiler::__time_bandwidth!($name, $bytes);
+    }};
 }
