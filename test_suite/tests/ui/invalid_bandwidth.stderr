@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+ --> tests/ui/invalid_bandwidth.rs:6:29
+  |
+6 |         time_block!("test", "should_be_a_int");
+  |         --------------------^^^^^^^^^^^^^^^^^-
+  |         |                   |
+  |         |                   expected `usize`, found `&str`
+  |         arguments to this function are incorrect
+  |
+note: associated function defined here
+ --> $WORKSPACE/peach_profiler/src/lib.rs
+  |
+  |     pub fn new(name: &str, bytes: usize, index: usize) -> Self {
+  |            ^^^

@@ -122,7 +122,7 @@ impl Parse for TimeBandwidthArgs {
 /// Proc macro to instrumentally time a block of code.
 ///
 /// Creates the hash based on its location and then the timer. Quasi-private as it should be used
-/// through peach_profiler::time_block!() rather than directly.
+/// through `peach_profiler::time_block!()` rather than directly.
 pub fn __time_bandwidth(input: TokenStream) -> TokenStream {
     let TimeBandwidthArgs { name, bytes, .. } = parse_macro_input!(input as TimeBandwidthArgs);
 

@@ -101,13 +101,13 @@ pub struct __Timer {
     pub index: usize,
     pub parent: usize,
     pub old_elapsed_inclusive: u64,
-    pub bytes: u64,
+    pub bytes: usize,
 }
 
 #[doc(hidden)]
 #[cfg(feature = "profile")]
 impl __Timer {
-    pub fn new(name: &str, bytes: u64, index: usize) -> Self {
+    pub fn new(name: &str, bytes: usize, index: usize) -> Self {
         assert!(index <= ARRAY_LEN);
 
         // A block with an empty name ("") doesn't make sense
@@ -228,10 +228,10 @@ const LABEL_LENGTH: usize = 16;
 #[cfg(feature = "profile")]
 #[derive(Copy, Clone)]
 pub struct TimedBlock {
-    pub elapsed_exclusive: u64,    // cycles not including children
-    pub elapsed_inclusive: u64,    // cycles including children
-    pub hit_count: u64,            // number of times timed block was entered
-    pub processed_byte_count: u64, // number of bytes processed in block's execution
+    pub elapsed_exclusive: u64,      // cycles not including children
+    pub elapsed_inclusive: u64,      // cycles including children
+    pub hit_count: u64,              // number of times timed block was entered
+    pub processed_byte_count: usize, // number of bytes processed in block's execution
     pub label: [u8; LABEL_LENGTH],
 }
 
