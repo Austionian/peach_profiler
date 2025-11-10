@@ -93,6 +93,8 @@ pub use libc_print::std_name::{print, println};
 #[cfg(feature = "std")]
 pub use std::{print, println};
 
+// Timer created to capture when the program starts and prints out run information
+// when the program closes.
 #[doc(hidden)]
 #[derive(Clone, Debug)]
 pub struct __MainTimer {
@@ -102,6 +104,7 @@ pub struct __MainTimer {
 
 #[doc(hidden)]
 impl __MainTimer {
+    /// Creates a new instance of __MainTimer by capturing the current cpu and os time.
     pub fn new() -> Self {
         Self {
             cpu_start: read_cpu_timer(),
