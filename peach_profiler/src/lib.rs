@@ -115,6 +115,8 @@ impl __MainTimer {
 
 #[doc(hidden)]
 impl Drop for __MainTimer {
+    // Adds code to print the total time the binary took to execute.
+    // Is always added whether the profile feature is enabled or not.
     fn drop(&mut self) {
         let __cpu_end = read_cpu_timer();
         let __time_end = read_os_timer();
@@ -131,13 +133,17 @@ impl Drop for __MainTimer {
         );
 
         #[cfg(feature = "profile")]
-        // SAFETY: Assumes single threaded runtime!
+        // SAFETY: Assumes single threaded, synchronous runtime! Nothing else should be running at
+        // this point, as `main` is being cleaned up.
+        //
+        // With profile enabled, loop through the __BLOCKS array and print out information for any
+        // TimedBlock that recorded elapsed_time.
         unsafe {
             let mut __print_i = 0;
             while __print_i < ARRAY_LEN {
-                let __block = crate::__BLOCKS[__print_i];
+                let __block = __BLOCKS[__print_i];
                 if __block.elapsed_inclusive > 0 {
-                    crate::print!(
+                    print!(
                         "\t{}[{}]: {}, ({:.2}%",
                         core::str::from_utf8(&__block.label).unwrap_or(&"invalid name"),
                         __block.hit_count,
@@ -145,12 +151,12 @@ impl Drop for __MainTimer {
                         (__block.elapsed_exclusive as f64 / __total_cpu as f64) * 100.0,
                     );
                     if __block.elapsed_exclusive != __block.elapsed_inclusive {
-                        crate::print!(
+                        print!(
                             ", {:.2}% w/children",
                             (__block.elapsed_inclusive as f64 / __total_cpu as f64) * 100.0,
                         );
                     }
-                    crate::print!(")");
+                    print!(")");
                     if __block.processed_byte_count > 0 {
                         const __MEGABYTE: f64 = 1024.0 * 1024.0;
                         const __GIGABYTE: f64 = __MEGABYTE * 1024.0;
@@ -160,10 +166,10 @@ impl Drop for __MainTimer {
                         let __megabytes = __block.processed_byte_count as f64 / __MEGABYTE;
                         let __gigabytes_per_second = __bytes_per_second / __GIGABYTE;
 
-                        crate::print!(" {__megabytes:.3}mb at {__gigabytes_per_second:.2}gb/s");
+                        print!(" {__megabytes:.3}mb at {__gigabytes_per_second:.2}gb/s");
                     }
 
-                    crate::print!("\n");
+                    print!("\n");
                 }
 
                 __print_i += 1;
