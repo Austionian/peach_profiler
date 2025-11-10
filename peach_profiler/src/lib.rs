@@ -94,6 +94,82 @@ pub use libc_print::std_name::{print, println};
 pub use std::{print, println};
 
 #[doc(hidden)]
+#[derive(Clone, Debug)]
+pub struct __MainTimer {
+    pub cpu_start: u64,
+    pub time_start: u64,
+}
+
+#[doc(hidden)]
+impl __MainTimer {
+    pub fn new() -> Self {
+        Self {
+            cpu_start: read_cpu_timer(),
+            time_start: read_os_timer(),
+        }
+    }
+}
+
+#[doc(hidden)]
+impl Drop for __MainTimer {
+    fn drop(&mut self) {
+        let __cpu_end = read_cpu_timer();
+        let __time_end = read_os_timer();
+
+        let __total_cpu = __cpu_end - self.cpu_start;
+        let __total_time = __time_end - self.time_start;
+
+        let __cpu_freq = get_os_time_freq() as f64 * __total_cpu as f64 / __total_time as f64;
+        crate::println!("\n______________________________________________________");
+        crate::println!(
+            "Total time: {:.4}ms (CPU freq {:.0})",
+            __total_time as f64 / 1_000.0,
+            __cpu_freq
+        );
+
+        #[cfg(feature = "profile")]
+        // SAFETY: Assumes single threaded runtime!
+        unsafe {
+            let mut __print_i = 0;
+            while __print_i < ARRAY_LEN {
+                let __block = crate::__BLOCKS[__print_i];
+                if __block.elapsed_inclusive > 0 {
+                    crate::print!(
+                        "\t{}[{}]: {}, ({:.2}%",
+                        core::str::from_utf8(&__block.label).unwrap_or(&"invalid name"),
+                        __block.hit_count,
+                        __block.elapsed_exclusive,
+                        (__block.elapsed_exclusive as f64 / __total_cpu as f64) * 100.0,
+                    );
+                    if __block.elapsed_exclusive != __block.elapsed_inclusive {
+                        crate::print!(
+                            ", {:.2}% w/children",
+                            (__block.elapsed_inclusive as f64 / __total_cpu as f64) * 100.0,
+                        );
+                    }
+                    crate::print!(")");
+                    if __block.processed_byte_count > 0 {
+                        const __MEGABYTE: f64 = 1024.0 * 1024.0;
+                        const __GIGABYTE: f64 = __MEGABYTE * 1024.0;
+
+                        let __seconds = __block.elapsed_inclusive as f64 / __cpu_freq;
+                        let __bytes_per_second = __block.processed_byte_count as f64 / __seconds;
+                        let __megabytes = __block.processed_byte_count as f64 / __MEGABYTE;
+                        let __gigabytes_per_second = __bytes_per_second / __GIGABYTE;
+
+                        crate::print!(" {__megabytes:.3}mb at {__gigabytes_per_second:.2}gb/s");
+                    }
+
+                    crate::print!("\n");
+                }
+
+                __print_i += 1;
+            }
+        }
+    }
+}
+
+#[doc(hidden)]
 #[cfg(feature = "profile")]
 #[derive(Clone)]
 pub struct __Timer {
