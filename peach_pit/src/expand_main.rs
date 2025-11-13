@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{parse_quote, ItemFn};
+use syn::{ItemFn, parse_quote};
 
 // Creates a __MainTimer in the `main` function that will be dropped when the program completes, at
 // which point __MainTimer will print out profiling data collected.

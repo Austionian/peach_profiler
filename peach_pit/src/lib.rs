@@ -9,14 +9,15 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::{
-    parse::{Nothing, Result},
     ItemFn,
+    parse::{Nothing, Result},
 };
 
 #[cfg(feature = "profile")]
 use syn::{
+    Expr, LitStr, Token,
     parse::{Parse, ParseStream},
-    parse_macro_input, Expr, LitStr, Token,
+    parse_macro_input,
 };
 
 /// Attribtue macro to instrumentally time a binary.

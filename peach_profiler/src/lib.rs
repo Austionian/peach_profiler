@@ -145,7 +145,7 @@ impl Drop for __MainTimer {
                 if __block.elapsed_inclusive > 0 {
                     print!(
                         "\t{}[{}]: {}, ({:.2}%",
-                        core::str::from_utf8(&__block.label).unwrap_or(&"invalid name"),
+                        core::str::from_utf8(&__block.label).unwrap_or("invalid name"),
                         __block.hit_count,
                         __block.elapsed_exclusive,
                         (__block.elapsed_exclusive as f64 / __total_cpu as f64) * 100.0,
@@ -169,7 +169,7 @@ impl Drop for __MainTimer {
                         print!(" {__megabytes:.3}mb at {__gigabytes_per_second:.2}gb/s");
                     }
 
-                    print!("\n");
+                    println!();
                 }
 
                 __print_i += 1;
