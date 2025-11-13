@@ -8,6 +8,7 @@ license.workspace = true
 
 [dependencies]
 peach_profiler = { path = "../peach_profiler", features = ["profile"] }
+anyhow = "1"
 
 [dev-dependencies]
 trybuild = "1"
