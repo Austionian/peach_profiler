@@ -1,5 +1,0 @@
-error: expected `fn`
- --> tests/ui/struct.rs:4:1
-  |
-4 | struct Foo {
-  | ^^^^^^
